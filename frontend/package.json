@@ -1,5 +1,4 @@
 {
-<<<<<<< HEAD
   "name": "frontend",
   "private": true,
   "version": "0.0.0",
@@ -12,8 +11,7 @@
   },
   "dependencies": {
     "react": "^19.2.4",
-    "react-dom": "^19.2.4",
-    "react-router-dom": "^7.13.1"
+    "react-dom": "^19.2.4"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
@@ -27,18 +25,3 @@
     "vite": "^8.0.0"
   }
 }
-=======
-  "name": "ai-marketlink",
-  "version": "1.0.0",
-  "description": "AI MarketLink - Hackathon Project",
-  "scripts": {
-    "frontend": "cd frontend && npm run dev",
-    "backend": "cd backend && npm run dev",
-    "dev": "concurrently \"npm run backend\" \"npm run frontend\"",
-    "install:all": "npm install && cd frontend && npm install && cd ../backend && npm install"
-  },
-  "devDependencies": {
-    "concurrently": "^8.2.2"
-  }
-}
->>>>>>> aa9dc14afdb8233f60fbe962e435553b6e4190ee
