@@ -1,8 +1,10 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
 export interface IVendor extends Document {
-  userId: mongoose.Types.ObjectId;
+  user: mongoose.Types.ObjectId;
   businessName: string;
+  firstName: string;
+  lastName: string;
   nin: string;
   phoneNumber: string;
   ninData: Record<string, any>;
@@ -11,13 +13,21 @@ export interface IVendor extends Document {
 }
 
 const vendorSchema = new Schema<IVendor>({
-  userId: {
+  user: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true,
     unique: true
   },
   businessName: {
+    type: String,
+    required: true
+  },
+  firstName: {
+    type: String,
+    required: true
+  },
+  lastName: {
     type: String,
     required: true
   },

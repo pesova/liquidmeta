@@ -1,17 +1,20 @@
-import { Response } from 'express';
+import { ZodObject, z } from 'zod';
 
 export class ValidationError extends Error {
   statusCode = 422;
   errors: { field: string | number; message: string }[];
 
   constructor(errors: { field: string | number; message: string }[]) {
-    super('Validation failed');
+    super('Validation failed2');
     this.name = 'ValidationError';
     this.errors = errors;
   }
 }
 
-export const handleValidation = (schema: any, body: any, res: Response) => {
+export const handleValidation = <T extends ZodObject>(
+  schema: T,
+  body: any
+): z.infer<T> => {
   const parsed = schema.safeParse(body);
   if (!parsed.success) {
     const errors = parsed.error.issues.map((issue: any) => ({

@@ -14,7 +14,7 @@ import { handleValidation } from "../middleware/validate";
 
 export const register = async (req: Request, res: Response) => {
   try {
-    const data = handleValidation(registerSchema, req.body, res);
+    const data = handleValidation(registerSchema, req.body);
     if (!data) return;
 
     const { user, verificationToken } = await AuthService.register(data);
@@ -26,39 +26,39 @@ export const register = async (req: Request, res: Response) => {
       devToken: env.NODE_ENV === "development" ? verificationToken : undefined,
     });
   } catch (error: any) {
-    res.status(400).json({ success: false, message: error.message });
+    throw error
   }
 };
 
 export const verifyEmail = async (req: Request, res: Response) => {
   try {
-    const data = handleValidation(verifyEmailSchema, req.body, res);
+    const data = handleValidation(verifyEmailSchema, req.body);
     if (!data) return;
 
     const result = await AuthService.verifyEmail(data.email, data.token);
 
     res.json({ success: true, message: result.message });
   } catch (error: any) {
-    res.status(400).json({ success: false, message: error.message });
+    throw error
   }
 };
 
 export const resendVerification = async (req: Request, res: Response) => {
   try {
-    const data = handleValidation(resendVerificationSchema, req.body, res);
+    const data = handleValidation(resendVerificationSchema, req.body);
     if (!data) return;
 
     const result = await AuthService.resendVerificationToken(data.email);
 
-    res.json({ success: true, message: result.message });
+    res.json({ success: true, message: result.message, devToken: env.NODE_ENV === "development" ? result.verificationToken : undefined, });
   } catch (error: any) {
-    res.status(400).json({ success: false, message: error.message });
+    throw error
   }
 };
 
 export const login = async (req: Request, res: Response) => {
   try {
-    const data = handleValidation(loginSchema, req.body, res);
+    const data = handleValidation(loginSchema, req.body);
     if (!data) return;
 
     const authorization = await AuthService.login(data.email, data.password);
@@ -69,7 +69,7 @@ export const login = async (req: Request, res: Response) => {
       data: authorization,
     });
   } catch (error: any) {
-    res.status(401).json({ success: false, message: error.message });
+    throw error
   }
 };
 
@@ -85,13 +85,13 @@ export const getProfile = async (req: Request, res: Response) => {
 
     res.json({ success: true, message: "User profile", data: { user } });
   } catch (error: any) {
-    res.status(500).json({ success: false, message: error.message });
+    throw error;
   }
 };
 
 export const forgotPassword = async (req: Request, res: Response) => {
   try {
-    const data = handleValidation(forgotPasswordSchema, req.body, res);
+    const data = handleValidation(forgotPasswordSchema, req.body);
 
     const result = await AuthService.forgotPassword(data.email);
     res.json({
@@ -100,24 +100,24 @@ export const forgotPassword = async (req: Request, res: Response) => {
       devToken: env.NODE_ENV === "development" ? result.token : undefined, // Only for development
     });
   } catch (error: any) {
-    res.status(400).json({ success: false, message: error.message });
+    throw error
   }
 };
 
 export const verifyResetToken = async (req: Request, res: Response) => {
   try {
-    const data = handleValidation(verifyResetTokenSchema, req.body, res);
+    const data = handleValidation(verifyResetTokenSchema, req.body);
 
     const result = await AuthService.verifyResetToken(data.email, data.token);
     res.json({ success: true, message: result.message });
   } catch (error: any) {
-    res.status(400).json({ success: false, message: error.message });
+    throw error
   }
 };
 
 export const resetPassword = async (req: Request, res: Response) => {
   try {
-    const data = handleValidation(resetPasswordSchema, req.body, res);
+    const data = handleValidation(resetPasswordSchema, req.body);
 
     const { confirmPassword, ...resetData } = data;
     const result = await AuthService.resetPassword(
@@ -128,7 +128,7 @@ export const resetPassword = async (req: Request, res: Response) => {
 
     res.json({ success: true, message: result.message });
   } catch (error: any) {
-    res.status(400).json({ success: false, message: error.message });
+    throw error
   }
 };
 

@@ -43,7 +43,7 @@ class InterswitchAuth {
 
   async getToken(type: InterswitchClientType = "developer"): Promise<string> {
     const cached = this.cache[type];
-
+    // TODO: cache token with MAp
     // Return cached token if still valid with 60s buffer
     if (cached && Date.now() < cached.expiresAt - 60000) {
       return cached.token;

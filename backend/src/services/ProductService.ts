@@ -12,7 +12,7 @@ class ProductService {
 
     (async () => {
       try {
-        const text = `${product.name} ${product.description} ${product.category}`;
+        const text = `${product.name} ${product.category} ${product.description} ₦${product.price}`;
         const embedding = await VectorService.generateEmbedding(text);
 
         // Update product with embedding

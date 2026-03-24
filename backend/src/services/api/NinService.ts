@@ -22,7 +22,6 @@ class NinService {
   async verifyNin(payload: NinVerificationPayload): Promise<NinVerificationResponse> {
     try {
         const token = await InterswitchAuth.getToken('marketplace');
-        console.log({token});
     
         const response: AxiosResponse<VerifyNinResponse> = await axios.post(
           `${this.baseUrl}/marketplace-routing/api/v1/verify/identity/nin`,
@@ -50,7 +49,7 @@ class NinService {
     
         return {
           verified: true,
-          data: response.data,
+          data: response.data?.data,
           message: 'NIN verified successfully'
         };
         

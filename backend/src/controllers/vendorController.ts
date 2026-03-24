@@ -16,7 +16,7 @@ export const onboardVendor = async (req: Request, res: Response) => {
   session.startTransaction();
 
   try {
-    const data = handleValidation(onboardSchema, req.body, res);
+    const data = handleValidation(onboardSchema, req.body);
     
     const ninVerification = await NinService.verifyNin({
       firstName: data.firstName,
@@ -41,7 +41,8 @@ export const onboardVendor = async (req: Request, res: Response) => {
 
     const user = await User.findOne({ email: data.email }).session(session);
     if (!user) throw new Error('Failed to create user account');
-
+    console.log(ninVerification.verified, 'ninVerification.verified', ninVerification.data?.status);
+    
     const vendor = await VendorService.onboard(user._id.toString(), {
       firstName: data.firstName,
       lastName: data.lastName,
@@ -67,7 +68,7 @@ export const onboardVendor = async (req: Request, res: Response) => {
     await session.abortTransaction();
     console.log({error});
     
-    res.status(400).json({ success: false, message: error.message });
+    throw error
   }
 };
 
@@ -76,7 +77,7 @@ export const onboardExistingVendor = async (req: Request, res: Response) => {
   session.startTransaction();
 
   try {
-    const data = handleValidation(onboardSchema, req.body, res);
+    const data = handleValidation(onboardSchema, req.body);
     if (!data) {
       await session.abortTransaction();
       return;
@@ -117,7 +118,7 @@ export const onboardExistingVendor = async (req: Request, res: Response) => {
 
   } catch (error: any) {
     await session.abortTransaction();
-    res.status(400).json({ success: false, message: error.message });
+    throw error
   } finally {
     session.endSession();
   }
@@ -125,23 +126,23 @@ export const onboardExistingVendor = async (req: Request, res: Response) => {
 
 export const getProfile = async (req: Request, res: Response) => {
   try {
-    const user = (req as any).user;
+    const user = (req as any).user;    
     const profile = await VendorService.getProfile(user._id);
     res.json({ success: true, data: profile });
   } catch (error: any) {
-    res.status(400).json({ success: false, message: error.message });
+    throw error
   }
 };
 
 export const updateProfile = async (req: Request, res: Response) => {
   try {
-    const data = handleValidation(updateVendorSchema, req.body, res);
+    const data = handleValidation(updateVendorSchema, req.body);
     if (!data) return;
     const user = (req as any).user;
     const updated = await VendorService.updateProfile(user._id, data);
     res.json({ success: true, message: "Profile updated", data: updated });
   } catch (error: any) {
-    res.status(400).json({ success: false, message: error.message });
+    throw error
   }
 };
 
@@ -151,7 +152,7 @@ export const getProducts = async (req: Request, res: Response) => {
     const products = await VendorService.getProducts(vendor._id);
     res.json({ success: true, data: products });
   } catch (error: any) {
-    res.status(400).json({ success: false, message: error.message });
+    throw error
   }
 };
 
@@ -161,7 +162,7 @@ export const getOrders = async (req: Request, res: Response) => {
     const orders = await VendorService.getOrders(vendor._id);
     res.json({ success: true, data: orders });
   } catch (error: any) {
-    res.status(400).json({ success: false, message: error.message });
+    throw error
   }
 };
 
@@ -171,7 +172,7 @@ export const getBalance = async (req: Request, res: Response) => {
     const balance = await VendorService.getBalance(vendor._id);
     res.json({ success: true, data: balance });
   } catch (error: any) {
-    res.status(400).json({ success: false, message: error.message });
+    throw error
   }
 };
 
@@ -186,6 +187,6 @@ export const getPublicVendor = async (req: Request, res: Response) => {
     }
     res.json({ success: true, data: vendor });
   } catch (error: any) {
-    res.status(400).json({ success: false, message: error.message });
+    throw error
   }
 };

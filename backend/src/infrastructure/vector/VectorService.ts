@@ -48,7 +48,9 @@ class VectorService {
   async searchProducts(queryText: string, limit: number = 10): Promise<any[]> {
     try {
       // Generate embedding for the query
+      
       const queryEmbedding = await this.generateEmbedding(queryText);
+      console.log({queryText, queryEmbedding});
 
       // Perform vector search using MongoDB's $vectorSearch aggregation
       const results = await Product.aggregate([

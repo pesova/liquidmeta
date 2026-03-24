@@ -39,7 +39,7 @@ export const createProduct = async (req: Request, res: Response) => {
   let imageUrl;
   try {
     await runSingleUpload(req, res);
-    const data = handleValidation(createProductSchema, req.body, res);
+    const data = handleValidation(createProductSchema, req.body);
     const vendor = (req as any).vendor;
 
     if (!req.file) {
@@ -114,7 +114,7 @@ export const getProductById = async (req: Request, res: Response) => {
 
 export const updateProduct = async (req: Request, res: Response) => {
   try {
-    const data = handleValidation(updateProductSchema, req.body, res);
+    const data = handleValidation(updateProductSchema, req.body);
     const vendor = (req as any).vendor;
 
     const product = await ProductService.updateProduct(
@@ -136,7 +136,7 @@ export const updateProduct = async (req: Request, res: Response) => {
       data: product,
     });
   } catch (error: any) {
-    res.status(400).json({ success: false, message: error.message });
+    throw error
   }
 };
 
@@ -211,7 +211,7 @@ export const bulkCreateProducts = async (req: Request, res: Response) => {
         .status(422)
         .json({ success: false, message: "At least one image is required" });
     }
-    const data = handleValidation(bulkCreateSchema, req.body, res);    
+    const data = handleValidation(bulkCreateSchema, req.body);    
     imageUrls = await uploadManyToCloudinary(files);
     
     const productIds = files.map(() => new mongoose.Types.ObjectId());    

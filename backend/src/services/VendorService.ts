@@ -10,29 +10,16 @@ import { EmailTemplateEnum } from './SmtpProvider';
 import { IVendor, Vendor } from '../models';
 
 class VendorService {
-  async createVendor(vendorData: Omit<IVendor, '_id' | 'createdAt' | 'updatedAt'>): Promise<IVendor> {
-    const user = await User.findById(vendorData.userId);
-    if (!user) {
-      throw new Error('User not found');
-    }
-
-    const existingVendor = await Vendor.findOne({ userId: vendorData.userId });
-    if (existingVendor) {
-      throw new Error('User already has a vendor account');
-    }
-
-    return await Vendor.create(vendorData);
-  }
 
   async getVendorById(id: string): Promise<IVendor | null> {
     return await Vendor.findById(id);
   }
 
   async getVendorByUserId(userId: string): Promise<IVendor | null> {
-    return await Vendor.findOne({ userId });
+    return await Vendor.findOne({ user: userId });
   }
 
-  async updateVendor(id: string, vendorData: Partial<Omit<IVendor, '_id' | 'userId' | 'createdAt' | 'updatedAt'>>): Promise<IVendor | null> {
+  async updateVendor(id: string, vendorData: Partial<Omit<IVendor, '_id' | 'user' | 'createdAt' | 'updatedAt'>>): Promise<IVendor | null> {
     return await Vendor.findByIdAndUpdate(id, vendorData, { new: true });
   }
 
@@ -54,13 +41,16 @@ async onboard(
   },
   session: ClientSession
 ): Promise<any> {
-  const existing = await Vendor.findOne({ userId }).session(session);
+  const existing = await Vendor.findOne({ user: userId }).session(session);
   if (existing) throw new Error('Vendor profile already exists for this account');
 
   const [vendor] = await Vendor.create([{
-    userId,
+    user: userId,
+    firstName: data.firstName,
+    lastName: data.lastName,
     businessName: data.businessName,
     nin: data.nin,
+    ninData: data.ninData,
     phoneNumber: data.phoneNumber
   }], { session });
 
@@ -82,11 +72,11 @@ async onboard(
 }
 
   async getProfile(userId: string) {
-    return Vendor.findOne({ userId });
+    return Vendor.findOne({ user: userId }).populate('user');
   }
 
   async updateProfile(userId: string, data: { businessName?: string; phoneNumber?: string }) {
-    return Vendor.findOneAndUpdate({ userId }, { $set: data }, { new: true });
+    return Vendor.findOneAndUpdate({ user: userId }, { $set: data }, { new: true });
   }
 
   async getProducts(vendorId: string) {
@@ -114,7 +104,7 @@ async onboard(
   }
 
   async getPublicProfile(vendorId: string) {
-    return Vendor.findById(vendorId).populate('userId', 'name');
+    return Vendor.findById(vendorId).populate('user', 'name');
   }
 }
 

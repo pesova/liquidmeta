@@ -106,7 +106,7 @@ class AuthService {
     }
   }
 
-  async resendVerificationToken(email: string): Promise<{ message: string }> {
+  async resendVerificationToken(email: string): Promise<{ message: string, verificationToken?: string }> {
     const user = await User.findOne({ email });
     if (!user) {
       throw new Error("User not found");
@@ -133,7 +133,7 @@ class AuthService {
       })
       .sendViaEmail();
 
-    return { message: "A new verification code has been sent to your email." };
+    return { message: "A new verification code has been sent to your email.", verificationToken };
   }
 
   async login(

@@ -6,6 +6,7 @@ import authRoutes from './routes/auth';
 import vendorRoutes from './routes/vendor';
 import { errorHandler } from './utils/errorHandler';
 import productRoutes from './routes/product';
+import chatRoutes from './routes/chat';
 
 connectDB();
 
@@ -21,6 +22,7 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/vendors', vendorRoutes);
 app.use('/api/products', productRoutes);
+app.use('/api/chat', chatRoutes);
 
 // Test route
 app.get('/', (req: Request, res: Response) => {
