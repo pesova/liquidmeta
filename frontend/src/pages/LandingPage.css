@@ -1,0 +1,216 @@
+/* ============================================================
+   AI MarketLink — Landing Page (Niko Dark Style) FIXED
+   ============================================================ */
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap');
+
+:root {
+  --bg:       #13171e;
+  --bg-card:  #1a1f28;
+  --bg-opt:   #1e242e;
+  --bg-hov:   #242b37;
+  --bdr:      #2a3140;
+  --bdr2:     #343d50;
+  --t1:       #f0f4f8;
+  --t2:       #9ca3af;
+  --t3:       #6b7280;
+  --gold:     #d4a017;
+  --gold-br:  #f0bc2e;
+  --green:    #4ade80;
+  --fh:       'Syne',sans-serif;
+  --fb:       'DM Sans',sans-serif;
+  --tr:       0.2s cubic-bezier(.4,0,.2,1);
+}
+
+*,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
+html, body, #root { height:100%; }
+body { font-family:var(--fb); background:var(--bg); color:var(--t1); -webkit-font-smoothing:antialiased; }
+svg { display:block; }
+button { font-family:var(--fb); cursor:pointer; }
+a { text-decoration:none; color:inherit; }
+
+/* ── ROOT ── */
+.nl-root {
+  min-height:100vh; width:100%;
+  display:flex; flex-direction:column;
+  position:relative; overflow:hidden;
+  background:var(--bg);
+}
+
+/* ── BACKGROUND DOTS (CSS only, no SVG overflow) ── */
+.nl-bg {
+  position:absolute; inset:0; pointer-events:none; z-index:0; overflow:hidden;
+}
+.nl-dot-node {
+  position:absolute;
+  width:4px; height:4px; border-radius:50%;
+  background:var(--green); opacity:0.3;
+  --col: calc(var(--i) * 5.26%);
+  --row: calc(30% + sin(var(--i)) * 20%);
+  left:var(--col);
+  top:calc(10% + (var(--i) * 4.5%));
+  animation:dotPulse calc(3s + var(--i) * .3s) ease-in-out infinite alternate;
+}
+@keyframes dotPulse {
+  from { opacity:.15; transform:scale(1); }
+  to   { opacity:.45; transform:scale(1.4); }
+}
+
+/* ── TOPBAR ── */
+.nl-topbar {
+  position:relative; z-index:10;
+  display:flex; align-items:center; justify-content:space-between;
+  padding:16px 28px;
+  border-bottom:1px solid rgba(255,255,255,.05);
+  background:rgba(19,23,30,.85); backdrop-filter:blur(12px);
+  flex-shrink:0;
+}
+.nl-logo { display:flex; align-items:center; gap:7px; }
+.nl-logo__ai {
+  font-family:var(--fh); font-weight:800; font-size:.9rem;
+  background:linear-gradient(135deg,var(--gold),var(--gold-br));
+  color:#0a2e1a; padding:2px 8px; border-radius:5px;
+}
+.nl-logo__name { font-family:var(--fh); font-weight:700; font-size:.92rem; color:var(--t1); }
+.nl-topbar__right { display:flex; align-items:center; gap:14px; }
+.nl-login-btn {
+  background:transparent; border:1px solid var(--bdr2);
+  color:var(--t2); font-size:.8rem; font-weight:500;
+  padding:6px 16px; border-radius:7px; transition:all var(--tr);
+}
+.nl-login-btn:hover { border-color:var(--gold); color:var(--gold); }
+.nl-socials { display:flex; align-items:center; gap:6px; }
+.nl-social {
+  width:30px; height:30px; border-radius:7px;
+  border:1px solid var(--bdr);
+  display:flex; align-items:center; justify-content:center;
+  color:var(--t3); transition:all var(--tr);
+}
+.nl-social:hover { border-color:var(--bdr2); color:var(--t2); }
+
+/* ── MAIN ── */
+.nl-main {
+  position:relative; z-index:10; flex:1;
+  display:flex; flex-direction:column;
+  align-items:center; justify-content:center;
+  padding:24px 20px 32px;
+}
+
+/* ── CARD ── */
+.nl-card {
+  background:var(--bg-card);
+  border:1px solid var(--bdr);
+  border-radius:18px;
+  padding:32px 28px;
+  width:100%; max-width:440px;
+  display:flex; flex-direction:column;
+  align-items:center; gap:0;
+  box-shadow:0 24px 64px rgba(0,0,0,.5);
+  animation:cardIn .4s cubic-bezier(.34,1.2,.64,1);
+}
+@keyframes cardIn {
+  from { opacity:0; transform:translateY(24px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+
+/* ── AVATAR (pure CSS, no SVG overflow) ── */
+.nl-avatar {
+  position:relative; width:76px; height:76px;
+  margin-bottom:18px;
+}
+.nl-avatar__circle {
+  width:76px; height:76px; border-radius:50%;
+  background:linear-gradient(145deg,#1e2530,#252d3a);
+  border:1.5px solid var(--bdr2);
+  display:flex; flex-direction:column;
+  align-items:center; justify-content:center;
+  gap:6px; overflow:hidden;
+  position:relative;
+}
+.nl-avatar__face {
+  display:flex; flex-direction:column; align-items:center; gap:5px;
+}
+.nl-avatar__eyes { display:flex; gap:8px; }
+.nl-avatar__eye {
+  width:7px; height:7px; border-radius:50%; background:#e5e7eb;
+}
+.nl-avatar__mouth {
+  width:14px; height:5px; border-radius:0 0 8px 8px;
+  border:1.5px solid #e5e7eb; border-top:none;
+}
+.nl-avatar__tie {
+  width:10px; height:12px;
+  background:var(--gold);
+  clip-path:polygon(20% 0%, 80% 0%, 100% 100%, 50% 75%, 0% 100%);
+}
+.nl-avatar__online {
+  position:absolute; bottom:3px; right:3px;
+  width:13px; height:13px; border-radius:50%;
+  background:var(--green); border:2px solid var(--bg-card);
+  box-shadow:0 0 7px var(--green);
+  animation:blink 2s ease-in-out infinite;
+}
+@keyframes blink { 0%,100%{opacity:1}50%{opacity:.5} }
+
+/* ── CARD TEXT ── */
+.nl-card__title {
+  font-family:var(--fh); font-size:1.45rem; font-weight:800;
+  color:var(--t1); text-align:center; margin-bottom:8px;
+}
+.nl-card__desc {
+  font-size:.82rem; color:var(--t2); text-align:center;
+  line-height:1.65; max-width:320px; margin-bottom:18px;
+}
+.nl-card__prompt {
+  font-size:.75rem; color:var(--t3); margin-bottom:10px;
+  text-align:center; letter-spacing:.03em;
+}
+
+/* ── OPTIONS ── */
+.nl-options { width:100%; display:flex; flex-direction:column; gap:8px; margin-bottom:16px; }
+.nl-option {
+  display:flex; align-items:center; gap:13px;
+  width:100%; padding:13px 14px;
+  background:var(--bg-opt); border:1px solid var(--bdr);
+  border-radius:11px; text-align:left; color:var(--t1);
+  transition:all var(--tr);
+}
+.nl-option:hover { border-color:var(--bdr2); background:var(--bg-hov); }
+.nl-option__icon {
+  width:34px; height:34px; border-radius:8px; flex-shrink:0;
+  background:rgba(255,255,255,.04); border:1px solid var(--bdr);
+  display:flex; align-items:center; justify-content:center;
+  color:var(--t2); transition:all var(--tr);
+}
+.nl-option:hover .nl-option__icon { border-color:var(--gold); color:var(--gold); }
+.nl-option__text { flex:1; }
+.nl-option__title { font-size:.85rem; font-weight:600; color:var(--t1); margin-bottom:1px; }
+.nl-option__sub   { font-size:.72rem; color:var(--t3); }
+.nl-option__tag {
+  font-size:.6rem; font-weight:700; padding:2px 8px;
+  border-radius:50px; background:rgba(212,160,23,.12);
+  color:var(--gold); border:1px solid rgba(212,160,23,.2);
+  white-space:nowrap; flex-shrink:0;
+}
+
+/* ── TRUST ── */
+.nl-card__trust {
+  display:flex; align-items:center; gap:6px;
+  font-size:.72rem; color:var(--t3); text-align:left; width:100%;
+  background:rgba(74,222,128,.04); border:1px solid rgba(74,222,128,.1);
+  border-radius:8px; padding:8px 11px;
+}
+.nl-card__trust svg { color:var(--green); flex-shrink:0; }
+
+/* ── DISCLAIMER ── */
+.nl-disclaimer {
+  margin-top:14px; font-size:.68rem; color:var(--t3);
+  text-align:center; max-width:380px;
+}
+
+/* ── RESPONSIVE ── */
+@media (max-width:500px) {
+  .nl-topbar { padding:12px 16px; }
+  .nl-socials { display:none; }
+  .nl-card { padding:24px 18px; border-radius:14px; }
+  .nl-card__title { font-size:1.2rem; }
+}
