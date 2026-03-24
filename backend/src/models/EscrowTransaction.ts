@@ -34,8 +34,6 @@ const escrowTransactionSchema = new Schema<IEscrowTransaction>({
   timestamps: true
 });
 
-escrowTransactionSchema.index({ orderId: 1 });
-
 escrowTransactionSchema.pre<IEscrowTransaction>('save', async function() {
   if (this.isModified('status') && this.status === 'RELEASED' && !this.releasedAt) {
     this.releasedAt = new Date();

@@ -1,111 +1,137 @@
-import { Request, Response } from 'express';
-import AuthService from '../services/AuthService';
-import { registerSchema } from '../validations/authValidator';
-
+import { Request, Response } from "express";
+import AuthService from "../services/AuthService";
+import {
+  registerSchema,
+  loginSchema,
+  verifyEmailSchema,
+  resendVerificationSchema,
+  resetPasswordSchema,
+  verifyResetTokenSchema,
+  forgotPasswordSchema,
+} from "../validations/authValidator";
+import env from "../config/env";
+import { handleValidation } from "../middleware/validate";
 
 export const register = async (req: Request, res: Response) => {
-    try {
-      // Validate request body
-      const parsed = registerSchema.safeParse(req.body)
-      if (!parsed.success) {
-        const errors = parsed.error.issues.map(issue => ({
-          field: issue.path[0],
-          message: issue.message
-        }))
+  try {
+    const data = handleValidation(registerSchema, req.body, res);
+    if (!data) return;
 
-        return res.status(422).json({
-          success: false,
-          message: 'Validation failed',
-          errors
-        })
-      }
+    const { user, verificationToken } = await AuthService.register(data);
 
-      const { name, email, password } = parsed.data
+    AuthService.sendVerificationToken(user, verificationToken);
+    res.status(201).json({
+      success: true,
+      message: "Verification token sent to your email",
+      devToken: env.NODE_ENV === "development" ? verificationToken : undefined,
+    });
+  } catch (error: any) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
 
-      // Register user
-      const result = await AuthService.register({
-        name: name,
-        email: email,
-        password: password,
-      } as any);
+export const verifyEmail = async (req: Request, res: Response) => {
+  try {
+    const data = handleValidation(verifyEmailSchema, req.body, res);
+    if (!data) return;
 
-      const { user, token } = result;
+    const result = await AuthService.verifyEmail(data.email, data.token);
 
-      res.status(201).json({
-        success: true,
-        message: 'User registered successfully',
-        data: {
-          user,
-          token
-        }
-      });
+    res.json({ success: true, message: result.message });
+  } catch (error: any) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
 
-    } catch (error) {
-      console.error('Registration error:', error);
-      throw error
-    }
-  };
+export const resendVerification = async (req: Request, res: Response) => {
+  try {
+    const data = handleValidation(resendVerificationSchema, req.body, res);
+    if (!data) return;
+
+    const result = await AuthService.resendVerificationToken(data.email);
+
+    res.json({ success: true, message: result.message });
+  } catch (error: any) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
 
 export const login = async (req: Request, res: Response) => {
-    try {
-      const { email, password } = req.body;
+  try {
+    const data = handleValidation(loginSchema, req.body, res);
+    if (!data) return;
 
-      const result = await AuthService.login(email, password);
+    const authorization = await AuthService.login(data.email, data.password);
 
-      if (!result) {
-        return res.status(401).json({
-          success: false,
-          message: 'Invalid credentials'
-        });
-      }
-
-      const { user, token } = result;
-
-      res.json({
-        success: true,
-        message: 'Login successful',
-        data: {
-          user: user,
-          token
-        }
-      });
-
-    } catch (error) {
-      console.error('Login error:', error);
-      throw error
-    }
-  };
+    res.json({
+      success: true,
+      message: "Login successful",
+      data: authorization,
+    });
+  } catch (error: any) {
+    res.status(401).json({ success: false, message: error.message });
+  }
+};
 
 export const getProfile = async (req: Request, res: Response) => {
-    try {
-      const user = (req as any).user;
+  try {
+    const user = (req as any).user;
 
-      if (!user) {
-        return res.status(401).json({
-          success: false,
-          message: 'Authentication required'
-        });
-      }
-
-      return res.json({
-        success: true,
-        data: {
-          user: user
-        }
-      });
-
-    } catch (error) {
-      console.error('Profile error:', error);
-      throw error
+    if (!user) {
+      return res
+        .status(401)
+        .json({ success: false, message: "Authentication required" });
     }
-  };
 
-/**
- * Logout user
- */
+    res.json({ success: true, message: "User profile", data: { user } });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const forgotPassword = async (req: Request, res: Response) => {
+  try {
+    const data = handleValidation(forgotPasswordSchema, req.body, res);
+
+    const result = await AuthService.forgotPassword(data.email);
+    res.json({
+      success: true,
+      message: result.message,
+      devToken: env.NODE_ENV === "development" ? result.token : undefined, // Only for development
+    });
+  } catch (error: any) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+export const verifyResetToken = async (req: Request, res: Response) => {
+  try {
+    const data = handleValidation(verifyResetTokenSchema, req.body, res);
+
+    const result = await AuthService.verifyResetToken(data.email, data.token);
+    res.json({ success: true, message: result.message });
+  } catch (error: any) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+export const resetPassword = async (req: Request, res: Response) => {
+  try {
+    const data = handleValidation(resetPasswordSchema, req.body, res);
+
+    const { confirmPassword, ...resetData } = data;
+    const result = await AuthService.resetPassword(
+      resetData.email,
+      resetData.token,
+      resetData.newPassword,
+    );
+
+    res.json({ success: true, message: result.message });
+  } catch (error: any) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
 export const logout = (req: Request, res: Response) => {
-  res.json({
-    success: true,
-    message: 'Logged out successfully'
-  });
+  res.json({ success: true, message: "Logged out successfully" });
 };

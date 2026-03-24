@@ -3,6 +3,7 @@ import env from './config/env';
 import cors from 'cors';
 import connectDB from './config/database';
 import authRoutes from './routes/auth';
+import vendorRoutes from './routes/vendor';
 
 connectDB();
 
@@ -16,6 +17,7 @@ app.use(express.json());
 
 // API Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/vendors', vendorRoutes);
 
 // Test route
 app.get('/', (req: Request, res: Response) => {

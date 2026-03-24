@@ -5,6 +5,7 @@ export interface IVendor extends Document {
   businessName: string;
   nin: string;
   phoneNumber: string;
+  ninData: Record<string, any>;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -23,7 +24,13 @@ const vendorSchema = new Schema<IVendor>({
   nin: {
     type: String,
     required: true,
-    unique: true
+    unique: true,
+    select: false
+  },
+  ninData: {
+    type: Schema.Types.Mixed,
+    default: null,
+    select: false
   },
   phoneNumber: {
     type: String,
