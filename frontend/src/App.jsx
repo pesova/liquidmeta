@@ -1,34 +1,18 @@
-import { useState, useEffect } from 'react';
-import { api } from './utils/api';
-import './App.css';
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import LandingPage from './pages/LandingPage'
+import ChatPage from './pages/ChatPage'
+import VendorDashboard from './pages/VendorDashboard'
 
 function App() {
-  const [message, setMessage] = useState('');
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    // Test backend connection
-    api.test()
-      .then(res => {
-        setMessage(res.data.message);
-        setLoading(false);
-      })
-      .catch(err => {
-        console.error('Backend connection failed:', err);
-        setLoading(false);
-      });
-  }, []);
-
   return (
-    <div className="App">
-      <h1>AI MarketLink</h1>
-      {loading ? (
-        <p>Connecting to backend...</p>
-      ) : (
-        <p>{message}</p>
-      )}
-    </div>
-  );
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/chat" element={<ChatPage />} />
+        <Route path="/vendor/dashboard" element={<VendorDashboard />} />
+      </Routes>
+    </BrowserRouter>
+  )
 }
 
-export default App;
+export default App
