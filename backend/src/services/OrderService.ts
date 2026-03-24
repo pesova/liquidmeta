@@ -1,6 +1,6 @@
 import { Order, IOrder } from '../models/Order';
-import { Product, IProduct } from '../models/Product';
-import { Vendor, IVendor } from '../models/Vendor';
+import { Product } from '../models/Product';
+import { Vendor } from '../models/Vendor';
 
 class OrderService {
   async createOrder(buyerId: string, productId: string): Promise<IOrder | null> {
@@ -16,7 +16,7 @@ class OrderService {
     }
 
     // Get vendor details
-    const vendor = await Vendor.findOne({ userId: product.vendorId });
+    const vendor = await Vendor.findOne({ userId: product.vendor });
     if (!vendor) {
       throw new Error('Vendor not found');
     }

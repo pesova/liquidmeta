@@ -1,5 +1,16 @@
 import { Response } from 'express';
 
+export class ValidationError extends Error {
+  statusCode = 422;
+  errors: { field: string | number; message: string }[];
+
+  constructor(errors: { field: string | number; message: string }[]) {
+    super('Validation failed');
+    this.name = 'ValidationError';
+    this.errors = errors;
+  }
+}
+
 export const handleValidation = (schema: any, body: any, res: Response) => {
   const parsed = schema.safeParse(body);
   if (!parsed.success) {
@@ -7,8 +18,7 @@ export const handleValidation = (schema: any, body: any, res: Response) => {
       field: issue.path[0],
       message: issue.message
     }));
-    res.status(422).json({ success: false, message: 'Validation failed', errors });
-    return null;
+    throw new ValidationError(errors);
   }
   return parsed.data;
 };

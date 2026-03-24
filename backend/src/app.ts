@@ -4,6 +4,8 @@ import cors from 'cors';
 import connectDB from './config/database';
 import authRoutes from './routes/auth';
 import vendorRoutes from './routes/vendor';
+import { errorHandler } from './utils/errorHandler';
+import productRoutes from './routes/product';
 
 connectDB();
 
@@ -18,6 +20,7 @@ app.use(express.json());
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/vendors', vendorRoutes);
+app.use('/api/products', productRoutes);
 
 // Test route
 app.get('/', (req: Request, res: Response) => {
@@ -34,20 +37,6 @@ app.get('/api/health', (req: Request, res: Response) => {
   });
 });
 
-app.use((err: any, req: any, res: any, next: any) => {
-  console.error("Global error handler:", err.message);
-
-  if (err.message === "Invalid webhook signature") {
-    return res.sendStatus(401);
-  }
-
-  if (err.message === "Missing signature header") {
-    return res.sendStatus(400);
-  }
-
-  res.status(500).json({
-    error: "Internal Server Error"
-  });
-});
+app.use(errorHandler)
 
 export default app;

@@ -1,47 +1,68 @@
 import mongoose, { Document, Schema } from 'mongoose';
+import { ProductCategoryEnum } from '../interfaces/IProduct';
 
 export interface IProduct extends Document {
-  vendorId: mongoose.Types.ObjectId;
   name: string;
   description: string;
   price: number;
+  category: ProductCategoryEnum;
   quantity: number;
-  imageUrl: string;
-  createdAt: Date;
-  updatedAt: Date;
+  imageUrl?: string;
+  vendor: mongoose.Types.ObjectId;
+  embedding?: number[];
 }
 
 const productSchema = new Schema<IProduct>({
-  vendorId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Vendor',
-    required: true
-  },
   name: {
     type: String,
-    required: true
+    required: true,
+    trim: true,
   },
   description: {
     type: String,
-    required: true
+    required: true,
   },
   price: {
     type: Number,
-    required: true
+    required: true,
+    min: 0,
+  },
+  category: {
+    type: String,
+    enum: Object.values(ProductCategoryEnum),
+    required: true,
   },
   quantity: {
     type: Number,
     required: true,
-    default: 0
+    min: 0,
+    default: 0,
   },
   imageUrl: {
     type: String,
-    required: true
-  }
+    default: '',
+  },
+  vendor: {
+    type: Schema.Types.ObjectId,
+    ref: 'Vendor',
+  },
+  embedding: {
+    type: [Number],
+    select: false, // Exclude embedding from queries by default
+  },
 }, {
-  timestamps: true
+  timestamps: true,
 });
 
-productSchema.index({ vendorId: 1 });
+// Create indexes for better query performance
+productSchema.index({ vendor: 1 });
+productSchema.index({ category: 1 });
+productSchema.index({ price: 1 });
+productSchema.index({ createdAt: -1 });
+
+// Compound index for common queries
+productSchema.index({ vendor: 1, category: 1 });
+productSchema.index({ category: 1, price: 1 });
 
 export const Product = mongoose.model<IProduct>('Product', productSchema);
+export default Product;

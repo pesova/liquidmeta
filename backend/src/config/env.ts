@@ -27,6 +27,11 @@ interface EnvironmentConfig {
   INTERSWITCH_MARKETPLACE_CLIENT_SECRET: string;
   INTERSWITCH_MARKETPLACE_PASSPORT_URL: string;
   INTERSWITCH_MARKETPLACE_API_URL: string;
+
+  OPENAI_API_KEY: string;
+  CLOUDINARY_CLOUD_NAME: string;
+  CLOUDINARY_API_KEY: string;
+  CLOUDINARY_API_SECRET: string;
 }
 
 class EnvConfig {
@@ -91,6 +96,10 @@ class EnvConfig {
         "INTERSWITCH_MARKETPLACE_API_URL",
         "https://api-marketplace-routing.k8.isw.la",
       ),
+      CLOUDINARY_API_SECRET: this.getString("CLOUDINARY_API_SECRET", ""),
+      CLOUDINARY_API_KEY: this.getString("CLOUDINARY_API_KEY", ""),
+      CLOUDINARY_CLOUD_NAME: this.getString("CLOUDINARY_CLOUD_NAME", ""),
+      OPENAI_API_KEY: this.getString("OPENAI_API_KEY", ""),
     };
   }
 
@@ -174,6 +183,21 @@ class EnvConfig {
   }
   get INTERSWITCH_MARKETPLACE_API_URL(): string {
     return this.config.INTERSWITCH_MARKETPLACE_API_URL;
+  }
+  get OPENAI_API_KEY(): string {
+    return this.config.OPENAI_API_KEY;
+  }
+
+  get CLOUDINARY_CLOUD_NAME(): string {
+    return this.config.CLOUDINARY_CLOUD_NAME;
+  }
+
+  get CLOUDINARY_API_KEY(): string {
+    return this.config.CLOUDINARY_API_KEY;
+  }
+
+  get CLOUDINARY_API_SECRET(): string {
+    return this.config.CLOUDINARY_API_SECRET;
   }
 
   public validate(): void {
