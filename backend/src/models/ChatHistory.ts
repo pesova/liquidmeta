@@ -6,11 +6,9 @@ export interface IMessage {
   createdAt: Date;
 }
 
-export interface IChatSession extends Document {
-  _id: mongoose.Types.ObjectId;
+export interface IChatHistory extends Document {
   userId: Types.ObjectId;
   messages: IMessage[];
-  summary?: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -24,13 +22,14 @@ const MessageSchema = new Schema<IMessage>(
   { _id: false }
 );
 
-const ChatSessionSchema = new Schema<IChatSession>(
+const ChatHistorySchema = new Schema<IChatHistory>(
   {
-    userId: { type: Types.ObjectId, ref: 'User', required: true, unique: true },
+    userId: { type: Types.ObjectId, ref: 'User', required: true },
     messages: { type: [MessageSchema], default: [] },
-    summary: { type: String, default: null },
   },
   { timestamps: true }
 );
 
-export const ChatSession = mongoose.model<IChatSession>('ChatSession', ChatSessionSchema);
+ChatHistorySchema.index({ userId: 1 });
+
+export const ChatHistory = mongoose.model<IChatHistory>('ChatHistory', ChatHistorySchema);

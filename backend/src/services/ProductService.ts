@@ -5,11 +5,12 @@ class ProductService {
   async createProduct(productData: any, vendorId: string): Promise<IProduct> {
     const product = new Product({
       ...productData,
-      vendorId: vendorId,
+      vendor: vendorId,
     });
 
     await product.save();
 
+    // TODO: add to queue
     (async () => {
       try {
         const text = `${product.name} ${product.category} ${product.description} ₦${product.price}`;

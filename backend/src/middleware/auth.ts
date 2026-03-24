@@ -88,7 +88,7 @@ export const isVendor = async (req: AuthenticatedRequest, res: Response, next: N
     });
   }
 
-  const vendor = await Vendor.findOne({ userId: req.user._id });
+  const vendor = await Vendor.findOne({ user: req.user._id });
   if (!vendor) {
     return res.status(403).json({
       success: false,

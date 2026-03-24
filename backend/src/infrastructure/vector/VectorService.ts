@@ -34,6 +34,7 @@ class VectorService {
         model: "text-embedding-3-small",
         input: text,
       });
+      //TODO: langchain & text-embedding-3-large
 
       return response.data[0].embedding;
     } catch (error) {

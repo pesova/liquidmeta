@@ -1,67 +1,140 @@
-import { Order, IOrder } from '../models/Order';
-import { Product } from '../models/Product';
-import { Vendor } from '../models/Vendor';
+import { Types } from 'mongoose';
+import { Order, OrderStatus } from '../models/Order';
+import { CreateOrderInput } from '../validations/orderValidator';
+import { Product } from '../models';
 
 class OrderService {
-  async createOrder(buyerId: string, productId: string): Promise<IOrder | null> {
-    // Get product details
+
+  public async createOrder(buyerId: string, input: CreateOrderInput) {
+    const { productId, quantity, deliveryAddress } = input;
+
     const product = await Product.findById(productId);
     if (!product) {
       throw new Error('Product not found');
     }
+    if (product.quantity < quantity) {
+      throw new Error(`Only ${product.quantity} unit(s) available`);
+    }    
 
-    // Check if product is in stock
-    if (product.quantity <= 0) {
-      throw new Error('Product out of stock');
-    }
+    const unitPrice = product.price;
+    const totalAmount = unitPrice * quantity;
 
-    // Get vendor details
-    const vendor = await Vendor.findOne({ userId: product.vendor });
-    if (!vendor) {
-      throw new Error('Vendor not found');
-    }
-
-    // Create order
     const order = await Order.create({
-      buyerId,
-      vendorId: vendor._id,
-      productId,
-      amount: product.price,
-      status: 'PENDING_PAYMENT'
+      buyerId: new Types.ObjectId(buyerId),
+      vendor: product.vendor,
+      product: product._id,
+      quantity,
+      unitPrice,
+      totalAmount,
+      deliveryAddress,
+      status: OrderStatus.PENDING_PAYMENT,
     });
 
     return order;
   }
 
-  async updateOrderStatus(orderId: string, status: IOrder['status']): Promise<IOrder | null> {
-    const order = await Order.findById(orderId);
+  public async getBuyerOrders(buyerId: string) {
+    const orders = await Order.find({ buyerId: new Types.ObjectId(buyerId) })
+      .populate('product', 'name imageUrl price category')
+      .populate('vendor', 'businessName')
+      .sort({ createdAt: -1 });
+
+    return orders;
+  }
+
+  public async getOrderById(orderId: string, requestingUserId: string) {
+    const order = await Order.findById(orderId)
+      .populate('product', 'name imageUrl price category')
+      .populate('vendor', 'businessName')
+      .populate('buyerId', 'name email');
+      
     if (!order) {
       throw new Error('Order not found');
     }
 
-    const updatedOrder = await Order.findByIdAndUpdate(orderId, { status }, { new: true });
+    const isOwner =
+      order.buyerId._id.toString() === requestingUserId ||
+      order.vendor._id.toString() === requestingUserId;
 
-    // If order is completed, update product quantity
-    if (status === 'COMPLETED') {
-      const product = await Product.findById(order.productId);
-      if (product) {
-        await Product.findByIdAndUpdate(order.productId, { quantity: product.quantity - 1 });
-      }
+    if (!isOwner) {
+      throw new Error('Unauthorised');
     }
 
-    return updatedOrder;
+    return order;
   }
 
-  async getOrderById(orderId: string): Promise<IOrder | null> {
-    return await Order.findById(orderId);
+  public async getVendorOrders(vendorId: string) {
+    const orders = await Order.find({ vendor: new Types.ObjectId(vendorId) })
+      .populate('product', 'name imageUrl price category')
+      .populate('buyerId', 'name email')
+      .sort({ createdAt: -1 });
+
+    return orders;
   }
 
-  async getOrdersByBuyerId(buyerId: string): Promise<IOrder[]> {
-    return await Order.find({ buyerId });
+  public async markShipped(orderId: string, vendorId: string) {
+    const order = await Order.findById(orderId);
+    if (!order) {
+      throw new Error('Order not found');
+    }
+    if (order.vendor.toString() !== vendorId) {
+      throw new Error('Unauthorised');
+    }
+    if (order.status !== OrderStatus.PAID_IN_ESCROW) {
+      throw new Error(`Cannot mark as shipped — current status is ${order.status}`);
+    }
+
+    order.status = OrderStatus.SHIPPED;
+    order.shippedAt = new Date();
+    await order.save();
+
+    return order;
   }
 
-  async getOrdersByVendorId(vendorId: string): Promise<IOrder[]> {
-    return await Order.find({ vendorId });
+  public async confirmDelivery(orderId: string, buyerId: string) {
+    const order = await Order.findById(orderId);
+
+    if (!order) {
+      throw new Error('Order not found');
+    }
+    if (order.buyerId.toString() !== buyerId) {
+      throw new Error('Unauthorised');
+    }
+    if (order.status !== OrderStatus.SHIPPED) {
+      throw new Error(`Cannot confirm delivery — current status is ${order.status}`);
+    }
+
+    order.status = OrderStatus.DELIVERED_PENDING_CONFIRMATION;
+    order.deliveredAt = new Date();
+    await order.save();
+
+    // TODO: trigger escrow release here once EscrowService is built
+    // EscrowService.releaseForOrder(orderId);
+
+    return order;
+  }
+
+  public async cancelOrder(orderId: string, requestingUserId: string, role: 'buyer' | 'vendor') {
+    const order = await Order.findById(orderId);
+
+    if (!order) {
+      throw new Error('Order not found');
+    }
+
+    // Only the buyer who created the order can cancel it
+    if (order.buyerId.toString() !== requestingUserId) {
+      throw new Error('Unauthorised');
+    }
+
+    if (order.status !== OrderStatus.PENDING_PAYMENT) {
+      throw new Error('Buyers can only cancel orders that are pending payment');
+    }
+
+    order.status = OrderStatus.CANCELLED;
+    order.cancelledAt = new Date();
+    await order.save();
+
+    return order;
   }
 }
 

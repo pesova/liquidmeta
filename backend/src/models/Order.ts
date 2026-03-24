@@ -1,55 +1,91 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
+export enum OrderStatus {
+  PENDING_PAYMENT = 'PENDING_PAYMENT',
+  PAID_IN_ESCROW = 'PAID_IN_ESCROW',
+  SHIPPED = 'SHIPPED',
+  DELIVERED_PENDING_CONFIRMATION = 'DELIVERED_PENDING_CONFIRMATION',
+  COMPLETED = 'COMPLETED',
+  CANCELLED = 'CANCELLED',
+}
+
 export interface IOrder extends Document {
+  _id: mongoose.Types.ObjectId;
   buyerId: mongoose.Types.ObjectId;
-  vendorId: mongoose.Types.ObjectId;
-  productId: mongoose.Types.ObjectId;
-  amount: number;
-  status: 'PENDING_PAYMENT' | 'PAID_IN_ESCROW' | 'SHIPPED' | 'DELIVERED_PENDING_CONFIRMATION' | 'COMPLETED' | 'CANCELLED';
+  vendor: mongoose.Types.ObjectId;
+  product: mongoose.Types.ObjectId;
+  quantity: number;
+  unitPrice: number;
+  totalAmount: number;
+  status: OrderStatus;
+  deliveryAddress: string;
+  shippedAt?: Date;
+  deliveredAt?: Date;
+  completedAt?: Date;
+  cancelledAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
 
-const orderSchema = new Schema<IOrder>({
-  buyerId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
+const orderSchema = new Schema<IOrder>(
+  {
+    buyerId: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      required: true,
+    },
+    vendor: {
+      type: Schema.Types.ObjectId,
+      ref: 'Vendor',
+      required: true,
+    },
+    product: {
+      type: Schema.Types.ObjectId,
+      ref: 'Product',
+      required: true,
+    },
+    quantity: {
+      type: Number,
+      required: true,
+    },
+    unitPrice: {
+      type: Number,
+      required: true,
+    },
+    totalAmount: {
+      type: Number,
+      required: true,
+    },
+    status: {
+      type: String,
+      enum: Object.values(OrderStatus),
+      required: true,
+      default: OrderStatus.PENDING_PAYMENT,
+    },
+    deliveryAddress: {
+      type: String,
+      required: true,
+    },
+    shippedAt: {
+      type: Date,
+      required: false,
+    },
+    deliveredAt: {
+      type: Date,
+      required: false,
+    },
+    completedAt: {
+      type: Date,
+      required: false,
+    },
+    cancelledAt: {
+      type: Date,
+      required: false,
+    },
   },
-  vendorId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Vendor',
-    required: true
-  },
-  productId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Product',
-    required: true
-  },
-  amount: {
-    type: Number,
-    required: true
-  },
-  status: {
-    type: String,
-    enum: [
-      'PENDING_PAYMENT',
-      'PAID_IN_ESCROW',
-      'SHIPPED',
-      'DELIVERED_PENDING_CONFIRMATION',
-      'COMPLETED',
-      'CANCELLED'
-    ],
-    default: 'PENDING_PAYMENT',
-    required: true
+  {
+    timestamps: true,
   }
-}, {
-  timestamps: true
-});
-
-orderSchema.index({ buyerId: 1 });
-orderSchema.index({ vendorId: 1 });
-orderSchema.index({ productId: 1 });
-orderSchema.index({ status: 1 });
+);
 
 export const Order = mongoose.model<IOrder>('Order', orderSchema);

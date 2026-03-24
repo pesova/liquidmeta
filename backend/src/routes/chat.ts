@@ -7,7 +7,7 @@ const router = Router();
 router.use(authenticateToken);
 
 router.post('/', sendMessage);
-router.get('/history', getChatHistory);
+router.get('/', getChatHistory);
 router.delete('/history', clearChatHistory);
 
 export default router;
