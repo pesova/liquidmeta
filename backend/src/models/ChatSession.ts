@@ -26,7 +26,7 @@ const MessageSchema = new Schema<IMessage>(
 
 const ChatSessionSchema = new Schema<IChatSession>(
   {
-    userId: { type: Types.ObjectId, ref: 'User', required: true, unique: true },
+    userId: { type: Types.ObjectId, ref: 'User', required: true },
     messages: { type: [MessageSchema], default: [] },
     summary: { type: String, default: null },
   },

@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import VendorService from "../services/VendorService";
 import {
   onboardSchema,
-  updateVendorSchema,
+  updateBankDetailsSchema
 } from "../validations/vendorValidator";
 import { handleValidation } from "../middleware/validate";
 import NinService from "../services/api/NinService";
@@ -134,17 +134,6 @@ export const getProfile = async (req: Request, res: Response) => {
   }
 };
 
-export const updateProfile = async (req: Request, res: Response) => {
-  try {
-    const data = handleValidation(updateVendorSchema, req.body);
-    if (!data) return;
-    const user = (req as any).user;
-    const updated = await VendorService.updateProfile(user._id, data);
-    res.json({ success: true, message: "Profile updated", data: updated });
-  } catch (error: any) {
-    throw error
-  }
-};
 
 export const getProducts = async (req: Request, res: Response) => {
   try {
@@ -188,5 +177,17 @@ export const getPublicVendor = async (req: Request, res: Response) => {
     res.json({ success: true, data: vendor });
   } catch (error: any) {
     throw error
+  }
+};
+
+export const updateBankDetails = async (req: Request, res: Response) => {
+  try {
+    const data = handleValidation(updateBankDetailsSchema, req.body);
+    if (!data) return;
+    const user = (req as any).user;
+    const updated = await VendorService.updateBankDetails(user._id, data);
+    res.json({ success: true, message: "Bank details updated", data: updated });
+  } catch (error: any) {
+    throw error;
   }
 };

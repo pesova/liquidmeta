@@ -8,6 +8,10 @@ export interface IVendor extends Document {
   nin: string;
   phoneNumber: string;
   ninData: Record<string, any>;
+  // Bank details for payouts
+  accountName?: string;
+  bankName?: string;
+  accountNumber?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -42,13 +46,26 @@ const vendorSchema = new Schema<IVendor>({
     default: null,
     select: false
   },
-  phoneNumber: {
-    type: String,
-    required: true
-  }
-}, {
-  timestamps: true
-});
+    phoneNumber: {
+      type: String,
+      required: true
+    },
+    // Bank details for payouts (optional)
+    accountName: {
+      type: String,
+      required: false
+    },
+    bankName: {
+      type: String,
+      required: false
+    },
+    accountNumber: {
+      type: String,
+      required: false
+    }
+  }, {
+    timestamps: true
+  });
 
 
 export const Vendor = mongoose.model<IVendor>('Vendor', vendorSchema);

@@ -8,6 +8,7 @@ import { errorHandler } from './utils/errorHandler';
 import productRoutes from './routes/product';
 import chatRoutes from './routes/chat';
 import orderRoutes from './routes/order';
+import paymentRoutes from './routes/payment';
 
 connectDB();
 
@@ -25,6 +26,7 @@ app.use('/api/vendors', vendorRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/orders', orderRoutes);
+app.use('/api/payments', paymentRoutes);
 
 // Test route
 app.get('/', (req: Request, res: Response) => {

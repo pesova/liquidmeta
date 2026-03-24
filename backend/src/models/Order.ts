@@ -11,7 +11,7 @@ export enum OrderStatus {
 
 export interface IOrder extends Document {
   _id: mongoose.Types.ObjectId;
-  buyerId: mongoose.Types.ObjectId;
+  buyer: mongoose.Types.ObjectId;
   vendor: mongoose.Types.ObjectId;
   product: mongoose.Types.ObjectId;
   quantity: number;
@@ -19,6 +19,8 @@ export interface IOrder extends Document {
   totalAmount: number;
   status: OrderStatus;
   deliveryAddress: string;
+  interswitchRef?: string;
+  interswitchTransactionRef?: string;
   shippedAt?: Date;
   deliveredAt?: Date;
   completedAt?: Date;
@@ -29,7 +31,7 @@ export interface IOrder extends Document {
 
 const orderSchema = new Schema<IOrder>(
   {
-    buyerId: {
+    buyer: {
       type: Schema.Types.ObjectId,
       ref: 'User',
       required: true,
@@ -76,6 +78,14 @@ const orderSchema = new Schema<IOrder>(
     },
     completedAt: {
       type: Date,
+      required: false,
+    },
+    interswitchRef: {
+      type: String,
+      required: false,
+    },
+    interswitchTransactionRef: {
+      type: String,
       required: false,
     },
     cancelledAt: {

@@ -1,92 +1,164 @@
-import { EscrowTransaction, IEscrowTransaction } from '../models/EscrowTransaction';
-import { Order, IOrder } from '../models/Order';
+import { Types } from 'mongoose';
+import { EscrowTransaction, EscrowStatus } from '../models/EscrowTransaction';
+import { Order, OrderStatus } from '../models/Order';
 
+/**
+ * EscrowService
+ *
+ * Owns all escrow state transitions.
+ * Called by PaymentService (on webhook) and OrderService (on delivery confirm / cancel).
+ *
+ * Escrow lifecycle:
+ *   createForOrder()   — called after Interswitch confirms payment — status: HOLDING
+ *   releaseForOrder()  — called after buyer confirms delivery     — status: RELEASED
+ *   refundForOrder()   — called when order is cancelled from escrow — status: REFUNDED
+ */
 class EscrowService {
-  // Create escrow transaction
-  async createEscrowTransaction(orderId: string, amount: number): Promise<IEscrowTransaction | null> {
-    // Check if order exists
-    const order = await Order.findById(orderId);
-    if (!order) {
-      throw new Error('Order not found');
+  /**
+   * Lock funds in escrow after successful payment.
+   * Creates an EscrowTransaction and moves the Order to PAID_IN_ESCROW.
+   */
+  public async createForOrder(params: {
+    orderId: string;
+    buyerId: string;
+    vendorId: string;
+    amount: number;
+    interswitchRef: string;
+    interswitchPaymentId?: string;
+  }): Promise<void> {
+    const { orderId, buyerId, vendorId, amount, interswitchRef, interswitchPaymentId } = params;
+
+    // Guard: don't double-create escrow for the same transaction ref
+    const existing = await EscrowTransaction.findOne({ interswitchRef });
+    if (existing) {
+      console.log(`EscrowService: escrow already exists for ref ${interswitchRef} — skipping`);
+      return;
     }
 
-    // Create escrow transaction
-    const escrowTransaction = await EscrowTransaction.create({
-      orderId,
-      amount: amount,
-      status: 'HELD' // Changed from PENDING to HELD as per the new schema
+    await EscrowTransaction.create({
+      order: new Types.ObjectId(orderId),
+      buyer: new Types.ObjectId(buyerId),
+      vendor: new Types.ObjectId(vendorId),
+      amount,
+      status: EscrowStatus.HOLDING,
+      interswitchRef,
+      interswitchPaymentId,
     });
 
-    // Update order status to PAID_IN_ESCROW
-    await Order.findByIdAndUpdate(orderId, { status: 'PAID_IN_ESCROW' });
+    // Move order to PAID_IN_ESCROW
+    await Order.findByIdAndUpdate(orderId, {
+      status: OrderStatus.PAID_IN_ESCROW,
+    });
 
-    return escrowTransaction;
+    console.log(`EscrowService: funds locked for order ${orderId} — ₦${amount / 100}`);
   }
 
-  // Hold funds in escrow
-  async holdFunds(transactionId: string): Promise<IEscrowTransaction | null> {
-    const transaction = await EscrowTransaction.findById(transactionId);
-    if (!transaction) {
-      throw new Error('Escrow transaction not found');
+  /**
+   * Release funds to vendor after buyer confirms delivery.
+   * Moves escrow to RELEASED and order to COMPLETED.
+   *
+   * NOTE: In a real system this would trigger a bank transfer to the vendor's
+   * settlement account. For MVP, "release" means marking the record — your
+   * finance/admin layer handles the actual payout run.
+   */
+  public async releaseForOrder(orderId: string): Promise<void> {
+    const escrow = await EscrowTransaction.findOne({
+      orderId: new Types.ObjectId(orderId),
+      status: EscrowStatus.HOLDING,
+    });
+
+    if (!escrow) {
+      throw new Error(`No active escrow found for order ${orderId}`);
     }
 
-    // Update transaction status to HELD
-    const updatedTransaction = await EscrowTransaction.findByIdAndUpdate(transactionId, { status: 'HELD' }, { new: true });
+    escrow.status = EscrowStatus.RELEASED;
+    escrow.releasedAt = new Date();
+    await escrow.save();
 
-    return updatedTransaction;
+    await Order.findByIdAndUpdate(orderId, {
+      status: OrderStatus.COMPLETED,
+      completedAt: new Date(),
+    });
+
+    console.log(`EscrowService: funds released for order ${orderId}`);
   }
 
-  // Release funds to vendor
-  async releaseFunds(transactionId: string): Promise<IEscrowTransaction | null> {
-    const transaction = await EscrowTransaction.findById(transactionId);
-    if (!transaction) {
-      throw new Error('Escrow transaction not found');
+  /**
+   * Refund buyer when order is cancelled from PAID_IN_ESCROW.
+   * Moves escrow to REFUNDED.
+   *
+   * NOTE: Same as release — the actual Interswitch refund API call should be
+   * wired here once you have settlement credentials. For MVP, mark the record.
+   */
+  public async refundForOrder(orderId: string): Promise<void> {
+    const escrow = await EscrowTransaction.findOne({
+      orderId: new Types.ObjectId(orderId),
+      status: EscrowStatus.HOLDING,
+    });
+
+    if (!escrow) {
+      throw new Error(`No active escrow found for order ${orderId}`);
     }
 
-    // Update transaction status to RELEASED
-    const updatedTransaction = await EscrowTransaction.findByIdAndUpdate(transactionId, { status: 'RELEASED' }, { new: true });
+    escrow.status = EscrowStatus.REFUNDED;
+    escrow.refundedAt = new Date();
+    await escrow.save();
 
-    // Update order status to COMPLETED
-    const order = await Order.findById(transaction.orderId);
-    if (order) {
-      await Order.findByIdAndUpdate(order._id, { status: 'COMPLETED' });
-    }
-
-    return updatedTransaction;
+    console.log(`EscrowService: funds marked for refund on order ${orderId}`);
   }
 
-  // Refund funds to buyer
-  async refundFunds(transactionId: string): Promise<IEscrowTransaction | null> {
-    const transaction = await EscrowTransaction.findById(transactionId);
-    if (!transaction) {
-      throw new Error('Escrow transaction not found');
-    }
-
-    // Update transaction status to REFUNDED
-    const updatedTransaction = await EscrowTransaction.findByIdAndUpdate(transactionId, { status: 'REFUNDED' }, { new: true });
-
-    // Update order status to CANCELLED
-    const order = await Order.findById(transaction.orderId);
-    if (order) {
-      await Order.findByIdAndUpdate(order._id, { status: 'CANCELLED' });
-    }
-
-    return updatedTransaction;
+  /**
+   * Get escrow record for an order (for admin / vendor balance views).
+   */
+  public async getByOrderId(orderId: string) {
+    return EscrowTransaction.findOne({ orderId: new Types.ObjectId(orderId) });
   }
 
-  // Get escrow transaction by ID
-  async getEscrowTransactionById(id: string): Promise<IEscrowTransaction | null> {
-    return await EscrowTransaction.findById(id);
+  /**
+   * Get total funds currently held in escrow for a vendor.
+   * Used by the vendor balance endpoint.
+   */
+  public async getVendorEscrowBalance(vendorId: string): Promise<number> {
+    const result = await EscrowTransaction.aggregate([
+      {
+        $match: {
+          vendorId: new Types.ObjectId(vendorId),
+          status: EscrowStatus.HOLDING,
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          total: { $sum: '$amount' },
+        },
+      },
+    ]);
+
+    // Amount stored in kobo — return in naira
+    return result.length > 0 ? result[0].total / 100 : 0;
   }
 
-  // Get escrow transaction by order ID
-  async getEscrowTransactionByOrderId(orderId: string): Promise<IEscrowTransaction | null> {
-    return await EscrowTransaction.findOne({ orderId });
-  }
+  /**
+   * Get total released (available) funds for a vendor.
+   * "Available" = released funds not yet paid out to vendor's bank.
+   */
+  public async getVendorAvailableBalance(vendorId: string): Promise<number> {
+    const result = await EscrowTransaction.aggregate([
+      {
+        $match: {
+          vendorId: new Types.ObjectId(vendorId),
+          status: EscrowStatus.RELEASED,
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          total: { $sum: '$amount' },
+        },
+      },
+    ]);
 
-  // Get escrow transactions by status
-  async getEscrowTransactionsByStatus(status: IEscrowTransaction['status']): Promise<IEscrowTransaction[]> {
-    return await EscrowTransaction.find({ status });
+    return result.length > 0 ? result[0].total / 100 : 0;
   }
 }
 

@@ -27,12 +27,14 @@ class InterswitchAuth {
         clientId: env.INTERSWITCH_MARKETPLACE_CLIENT_ID,
         clientSecret: env.INTERSWITCH_MARKETPLACE_CLIENT_SECRET,
         passportUrl: env.INTERSWITCH_MARKETPLACE_PASSPORT_URL,
+        baseUrl: env.INTERSWITCH_API_URL
       };
     }
     return {
       clientId: env.INTERSWITCH_CLIENT_ID,
       clientSecret: env.INTERSWITCH_CLIENT_SECRET,
       passportUrl: env.INTERSWITCH_PASSPORT_URL,
+      baseUrl: env.INTERSWITCH_API_URL
     };
   }
 
@@ -49,10 +51,10 @@ class InterswitchAuth {
       return cached.token;
     }
 
-    const { clientId, clientSecret, passportUrl } = this.getCredentials(type);
+    const { clientId, clientSecret, passportUrl, baseUrl } = this.getCredentials(type);
 
     const response = await axios.post<InterswitchToken>(
-      `${passportUrl}/oauth/token`,
+      `${baseUrl}/passport/oauth/token?grant_type=client_credentials`,
       new URLSearchParams({
         scope: "profile",
         grant_type: "client_credentials",

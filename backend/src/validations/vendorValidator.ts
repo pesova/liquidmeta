@@ -46,7 +46,8 @@ export const onboardSchema = z
     },
   );
 
-export const updateVendorSchema = z.object({
-  businessName: z.string().optional(),
-  phoneNumber: z.string().optional(),
+export const updateBankDetailsSchema = z.object({
+  accountName: z.string().min(1, "Account name is required"),
+  bankName: z.string().min(1, "Bank name is required"),
+  accountNumber: z.string().min(1, "Account number is required")
 });

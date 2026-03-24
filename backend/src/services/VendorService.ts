@@ -79,6 +79,10 @@ async onboard(
     return Vendor.findOneAndUpdate({ user: userId }, { $set: data }, { new: true });
   }
 
+  async updateBankDetails(userId: string, data: { accountName: string; bankName: string; accountNumber: string }) {
+    return await Vendor.findOneAndUpdate({ user: userId }, { $set: data }, { new: true });
+  }
+
   async getProducts(vendorId: string) {
     return Product.find({ vendorId });
   }

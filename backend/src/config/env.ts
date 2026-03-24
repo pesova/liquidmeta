@@ -27,6 +27,9 @@ interface EnvironmentConfig {
   INTERSWITCH_MARKETPLACE_CLIENT_SECRET: string;
   INTERSWITCH_MARKETPLACE_PASSPORT_URL: string;
   INTERSWITCH_MARKETPLACE_API_URL: string;
+  INTERSWITCH_CALLBACK_URL: string;
+  INTERSWITCH_PAYABLE_CODE: string;
+  INTERSWITCH_MERCHANT_CODE: string;
 
   OPENAI_API_KEY: string;
   CLOUDINARY_CLOUD_NAME: string;
@@ -79,7 +82,14 @@ class EnvConfig {
         "INTERSWITCH_API_URL",
         "https://api-marketplace-routing.k8.isw.la",
       ),
-
+      INTERSWITCH_CALLBACK_URL: this.getString(
+        "INTERSWITCH_CALLBACK_URL",
+        "http://localhost:5000/api/payments/webhook",
+      ),
+      INTERSWITCH_PAYABLE_CODE: this.getString(
+        "INTERSWITCH_PAYABLE_CODE",
+        "",
+      ),
       INTERSWITCH_MARKETPLACE_CLIENT_ID: this.getString(
         "INTERSWITCH_MARKETPLACE_CLIENT_ID",
         "",
@@ -95,6 +105,10 @@ class EnvConfig {
       INTERSWITCH_MARKETPLACE_API_URL: this.getString(
         "INTERSWITCH_MARKETPLACE_API_URL",
         "https://api-marketplace-routing.k8.isw.la",
+      ),
+      INTERSWITCH_MERCHANT_CODE: this.getString(
+        "INTERSWITCH_MERCHANT_CODE",
+        "",
       ),
       CLOUDINARY_API_SECRET: this.getString("CLOUDINARY_API_SECRET", ""),
       CLOUDINARY_API_KEY: this.getString("CLOUDINARY_API_KEY", ""),
@@ -171,7 +185,15 @@ class EnvConfig {
   get INTERSWITCH_API_URL(): string {
     return this.config.INTERSWITCH_API_URL;
   }
-
+  get INTERSWITCH_CALLBACK_URL(): string {
+    return this.config.INTERSWITCH_CALLBACK_URL;
+  }
+  get INTERSWITCH_MERCHANT_CODE(): string {
+    return this.config.INTERSWITCH_MERCHANT_CODE;
+  }
+  get INTERSWITCH_PAYABLE_CODE(): string {
+    return this.config.INTERSWITCH_PAYABLE_CODE;
+  }
   get INTERSWITCH_MARKETPLACE_CLIENT_ID(): string {
     return this.config.INTERSWITCH_MARKETPLACE_CLIENT_ID;
   }

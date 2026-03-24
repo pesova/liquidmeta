@@ -11,7 +11,7 @@ class ProductService {
     await product.save();
 
     // TODO: add to queue
-    (async () => {
+    // (async () => {
       try {
         const text = `${product.name} ${product.category} ${product.description} ₦${product.price}`;
         const embedding = await VectorService.generateEmbedding(text);
@@ -25,7 +25,7 @@ class ProductService {
           error,
         );
       }
-    })();
+    // })();
 
     // Return product without embedding
     const products = await Product.findById(product._id)

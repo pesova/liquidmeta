@@ -1,43 +1,77 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
+export enum EscrowStatus {
+  HOLDING = 'HOLDING',       // payment confirmed, funds locked
+  RELEASED = 'RELEASED',     // buyer confirmed delivery, funds sent to vendor
+  REFUNDED = 'REFUNDED',     // order cancelled, funds returned to buyer
+}
+
 export interface IEscrowTransaction extends Document {
-  orderId: mongoose.Types.ObjectId;
+  _id: mongoose.Types.ObjectId;
+  order: mongoose.Types.ObjectId;
+  buyer: mongoose.Types.ObjectId;
+  vendor: mongoose.Types.ObjectId;
   amount: number;
-  status: 'HELD' | 'RELEASED' | 'REFUNDED';
+  status: EscrowStatus;
+  interswitchRef: string;       // transactionRef from Interswitch
+  interswitchPaymentId?: string; // paymentId returned by Interswitch
   releasedAt?: Date;
+  refundedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
 
-const escrowTransactionSchema = new Schema<IEscrowTransaction>({
-  orderId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Order',
-    required: true,
-    unique: true
+const escrowTransactionSchema = new Schema<IEscrowTransaction>(
+  {
+    order: {
+      type: Schema.Types.ObjectId,
+      ref: 'Order',
+      required: true,
+    },
+    buyer: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      required: true,
+    },
+    vendor: {
+      type: Schema.Types.ObjectId,
+      ref: 'Vendor',
+      required: true,
+    },
+    amount: {
+      type: Number,
+      required: true,
+    },
+    status: {
+      type: String,
+      enum: Object.values(EscrowStatus),
+      required: true,
+      default: EscrowStatus.HOLDING,
+    },
+    interswitchRef: {
+      type: String,
+      required: true,
+      unique: true,
+    },
+    interswitchPaymentId: {
+      type: String,
+      required: false,
+    },
+    releasedAt: {
+      type: Date,
+      required: false,
+    },
+    refundedAt: {
+      type: Date,
+      required: false,
+    },
   },
-  amount: {
-    type: Number,
-    required: true
-  },
-  status: {
-    type: String,
-    enum: ['HELD', 'RELEASED', 'REFUNDED'],
-    default: 'HELD',
-    required: true
-  },
-  releasedAt: {
-    type: Date,
-    default: null
+  {
+    timestamps: true,
   }
-}, {
-  timestamps: true
-});
+);
 
-escrowTransactionSchema.pre<IEscrowTransaction>('save', async function() {
-  if (this.isModified('status') && this.status === 'RELEASED' && !this.releasedAt) {
-    this.releasedAt = new Date();
-  }
-});
-
-export const EscrowTransaction = mongoose.model<IEscrowTransaction>('EscrowTransaction', escrowTransactionSchema);
+export const EscrowTransaction = mongoose.model<IEscrowTransaction>(
+  'EscrowTransaction',
+  escrowTransactionSchema
+);
