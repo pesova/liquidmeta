@@ -1,46 +1,121 @@
-deploy:
-  runs-on: ubuntu-latest
-  name: Deploy to EC2 (build on server)
-  if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+name: Deploy AI MarketLink
 
-  steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
 
-    - name: Deploy & Build on EC2
-      uses: appleboy/ssh-action@v1.0.0
-      with:
-        host: ${{ secrets.EC2_HOST }}
-        username: ${{ secrets.EC2_USER }}
-        key: ${{ secrets.EC2_SSH_KEY }}
-        port: ${{ secrets.EC2_PORT }}
-        script: |
-          cd /home/ubuntu/ai-marketlink
-          
-          # Pull latest code
-          git fetch origin
-          git reset --hard origin/main
-          
-          # Install root dependencies
-          npm install --production
-          
-          # Backend build
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  # Job 1: Test & Build Backend (CI only)
+  build-backend:
+    runs-on: ubuntu-latest
+    name: CI: Build & Lint Backend
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install backend dependencies
+        run: |
           cd backend
-          npm install --production
+          npm install
+
+      - name: Run backend linting
+        run: |
+          cd backend
+          npm run lint || true
+
+      - name: Build backend TypeScript
+        run: |
+          cd backend
           npm run build
-          cd ..
-          
-          # Frontend build
+
+  # Job 2: Test & Build Frontend (CI only)
+  build-frontend:
+    runs-on: ubuntu-latest
+    name: CI: Build & Lint Frontend
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install frontend dependencies
+        run: |
           cd frontend
-          npm install --production
+          npm install
+
+      - name: Run frontend linting
+        run: |
+          cd frontend
+          npm run lint || true
+
+      - name: Build frontend
+        run: |
+          cd frontend
           npm run build
-          cd ..
-          
-          # Restart PM2 app
-          pm2 restart marketlink-api --update-env || pm2 start ecosystem.config.js
-          pm2 save
-          
-          # Reload Nginx
-          sudo nginx -s reload || sudo systemctl restart nginx
-          
-          echo "✓ Deployment & build completed successfully on EC2!"
+
+  # Job 3: Deploy to EC2 (build on server)
+  deploy:
+    needs: [build-backend, build-frontend]
+    runs-on: ubuntu-latest
+    name: Deploy & Build on EC2
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy & Build on EC2
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          port: ${{ secrets.EC2_PORT }}
+          script: |
+            cd /home/ubuntu/ai-marketlink
+            
+            # Pull latest code
+            git fetch origin
+            git reset --hard origin/main
+            
+            # Install root dependencies
+            npm install --production
+            
+            # Backend build
+            cd backend
+            npm install --production
+            npm run build
+            cd ..
+            
+            # Frontend build
+            cd frontend
+            npm install --production
+            npm run build
+            cd ..
+            
+            # Restart PM2 app
+            pm2 restart marketlink-api --update-env || pm2 start ecosystem.config.js
+            pm2 save
+            
+            # Reload Nginx
+            sudo nginx -s reload || sudo systemctl restart nginx
+            
+            echo "✓ Deployment & build completed successfully on EC2!"
