@@ -20,12 +20,14 @@ const seedAdmin = async () => {
     process.exit(0);
   }
 
-  const hashedPassword = await bcrypt.hash('Admin@123456', env.JWT_SALT);
+  const adminPassword = env.ADMIN_PASSWORD || 'Admin@123456';
+  const hashedPassword = await bcrypt.hash(adminPassword, env.JWT_SALT);
 
   await User.create({
     name: 'Super Admin',
     email: 'admin@yopmail.com',
     password: hashedPassword,
+    isEmailVerified: true,
     roleId: adminRole._id
   });
 
