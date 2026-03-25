@@ -96,9 +96,6 @@ jobs:
             git fetch origin
             git reset --hard origin/main
             
-            # Install root dependencies
-            npm install --production
-            
             # Backend build
             cd backend
             npm install --production
