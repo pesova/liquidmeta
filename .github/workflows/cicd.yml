@@ -16,7 +16,7 @@ jobs:
   # Job 1: Test & Build Backend (CI only)
   build-backend:
     runs-on: ubuntu-latest
-    name: CI: Build & Lint Backend
+    name: Build & Lint Backend
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -45,7 +45,7 @@ jobs:
   # Job 2: Test & Build Frontend (CI only)
   build-frontend:
     runs-on: ubuntu-latest
-    name: CI: Build & Lint Frontend
+    name: Build & Lint Frontend
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
