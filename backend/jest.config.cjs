@@ -11,6 +11,7 @@ module.exports = {
   projects: [
     {
       displayName: 'unit',
+      testMatch: ['<rootDir>/tests/validators.test.ts'],
       preset: 'ts-jest',
       testEnvironment: 'node',
       setupFiles: ['<rootDir>/jest.env.setup.js'],
@@ -19,6 +20,7 @@ module.exports = {
     },
     {
       displayName: 'integration',
+      testPathIgnorePatterns: ['<rootDir>/tests/validators.test.ts'],
       preset: 'ts-jest',
       testEnvironment: 'node',
       roots: ['<rootDir>/tests'],
