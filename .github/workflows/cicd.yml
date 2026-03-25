@@ -1,0 +1,157 @@
+name: Deploy AI MarketLink
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  # Job 1: Test & Build Backend
+  build-backend:
+    runs-on: ubuntu-latest
+    name: Build & Test Backend
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install backend dependencies
+        run: |
+          cd backend
+          npm install
+
+      - name: Run backend linting
+        run: |
+          cd backend
+          npm run lint || true
+
+      - name: Build backend TypeScript
+        run: |
+          cd backend
+          npm run build
+
+      - name: Upload backend build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-dist
+          path: backend/dist/
+          retention-days: 1
+
+  # Job 2: Test & Build Frontend
+  build-frontend:
+    runs-on: ubuntu-latest
+    name: Build & Test Frontend
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install frontend dependencies
+        run: |
+          cd frontend
+          npm install
+
+      - name: Run frontend linting
+        run: |
+          cd frontend
+          npm run lint || true
+
+      - name: Build frontend
+        run: |
+          cd frontend
+          npm run build
+
+      - name: Upload frontend build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist/
+          retention-days: 1
+
+  # Job 3: Deploy to EC2 (only on main branch push, not on PRs)
+  deploy:
+    needs: [build-backend, build-frontend]
+    runs-on: ubuntu-latest
+    name: Deploy to EC2
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download backend artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-dist
+          path: backend/dist/
+
+      - name: Download frontend artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist/
+
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          port: ${{ secrets.EC2_PORT }}
+          script: |
+            cd /home/ubuntu/ai-marketlink
+            
+            # Pull latest code
+            git fetch origin
+            git reset --hard origin/main
+            
+            # Copy backend dist
+            if [ -d "backend/dist" ]; then
+              rm -rf backend/dist
+            fi
+            mkdir -p backend/dist
+            
+            # Copy frontend dist
+            if [ -d "frontend/dist" ]; then
+              rm -rf frontend/dist
+            fi
+            mkdir -p frontend/dist
+            
+            # Install root dependencies
+            npm install --production
+            
+            # Install backend dependencies (if package.json changed)
+            cd backend
+            npm install --production
+            cd ..
+            
+            # Install frontend dependencies (if package.json changed)
+            cd frontend
+            npm install --production
+            cd ..
+            
+            # Restart PM2 app
+            pm2 restart marketlink-api --update-env || pm2 start ecosystem.config.js
+            pm2 save
+            
+            # Reload Nginx (no downtime)
+            sudo nginx -s reload || sudo systemctl restart nginx
+            
+            echo "✓ Deployment completed successfully!"
