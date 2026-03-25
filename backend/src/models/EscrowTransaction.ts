@@ -1,6 +1,7 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
 export enum EscrowStatus {
+  INITIATED = 'INITIATED', // created when payment link generated
   HOLDING = 'HOLDING',       // payment confirmed, funds locked
   RELEASED = 'RELEASED',     // buyer confirmed delivery, funds sent to vendor
   REFUNDED = 'REFUNDED',     // order cancelled, funds returned to buyer
@@ -46,7 +47,7 @@ const escrowTransactionSchema = new Schema<IEscrowTransaction>(
       type: String,
       enum: Object.values(EscrowStatus),
       required: true,
-      default: EscrowStatus.HOLDING,
+      default: EscrowStatus.INITIATED,
     },
     interswitchRef: {
       type: String,

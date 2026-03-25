@@ -95,15 +95,20 @@ export const getEscrowByOrder = async (req: Request, res: Response) => {
  */
 export const checkTransactionStatus = async (req: Request, res: Response) => {
   try {
-    const { reference, amount } = req.query;
-    if (!reference || !amount) {
-      return res.status(400).json({ success: false, message: 'reference and amount are required' });
+    const { reference } = req.query;
+    if (!reference) {
+      return res.status(400).json({ success: false, message: 'reference is required' });
     }
-    const amountKobo = Number(amount);
-    if (isNaN(amountKobo)) {
-      return res.status(400).json({ success: false, message: 'amount must be a number' });
+    const escrowRecord = await (await import('../models/EscrowTransaction')).EscrowTransaction.findOne({ interswitchRef: reference as string });
+    if (!escrowRecord) {
+      return res.status(404).json({ success: false, message: 'Escrow not found for given reference' });
     }
+    const amountKobo = escrowRecord.amount;
     const result = await InterswitchProvider.verifyTransaction(reference as string, amountKobo);
+    if (result.responseCode === '00') {
+      // Successful payment – finalize escrow
+      await EscrowService.finalizeEscrow(escrowRecord.order.toString(), result.paymentReference);
+    }
     res.status(200).json({ success: true, data: result });
   } catch (error: any) {
     console.error('checkTransactionStatus error:', error);
