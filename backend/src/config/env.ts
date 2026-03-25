@@ -84,7 +84,7 @@ class EnvConfig {
       ),
       INTERSWITCH_CALLBACK_URL: this.getString(
         "INTERSWITCH_CALLBACK_URL",
-        "http://localhost:5000/api/payments/webhook",
+        "http://localhost:5000/",
       ),
       INTERSWITCH_PAYABLE_CODE: this.getString(
         "INTERSWITCH_PAYABLE_CODE",
