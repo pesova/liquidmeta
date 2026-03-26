@@ -1,4 +1,3 @@
-import { promiseHooks } from 'node:v8';
 import { z } from 'zod';
 
 // User registration validation schema
@@ -29,7 +28,6 @@ export const registerSchema = z.object({
 // User login validation schema
 export const loginSchema = z.object({
   email: z
-    .string()
     .email('Please provide a valid email address')
     .toLowerCase()
     .trim(),

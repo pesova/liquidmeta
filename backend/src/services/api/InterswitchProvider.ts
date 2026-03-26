@@ -121,7 +121,6 @@ class InterswitchProvider {
     amountKobo: number,
   ): Promise<TransactionStatusResponse> {
     const url = `${this.baseUrl}/collections/api/v1/gettransaction.json?merchantcode=${this.merchantCode}&transactionreference=${transactionRef}&amount=${amountKobo}`;
-    // const url = `${this.baseUrl}/collections/api/v2/gettransaction.json?transactionReference=${transactionRef}`;
 
     const token = await InterswitchAuth.getToken();
 
