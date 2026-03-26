@@ -6,6 +6,7 @@ export interface IUser {
   email: string;
   password: string;
   roleId: mongoose.Types.ObjectId;
+  phoneNumber: string;
   isEmailVerified: boolean;
   emailVerificationToken?: string;
   createdAt: Date;
@@ -32,6 +33,11 @@ const userSchema = new Schema<IUser>({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Role',
     required: true
+  },
+  phoneNumber: {
+      type: String,
+      unique: true,
+      required: true
   },
   isEmailVerified: {
     type: Boolean,

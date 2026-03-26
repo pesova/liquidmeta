@@ -32,7 +32,7 @@ class AuthService {
     return Math.floor(100000 + Math.random() * 900000).toString();
   }
 
-  async register(userData: { name: string; email: string; password: string }) {
+  async register(userData: { name: string; email: string; password: string, phoneNumber: string }) {
     const existingUser = await User.findOne({ email: userData.email });
     if (existingUser) {
       throw new Error("User with this email already exists");
@@ -49,6 +49,7 @@ class AuthService {
     const user = await User.create({
       name: userData.name,
       email: userData.email,
+      phoneNumber: userData.phoneNumber,
       password: hashedPassword,
       roleId: role._id,
       isEmailVerified: false,

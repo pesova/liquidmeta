@@ -11,6 +11,10 @@ export const registerSchema = z.object({
     .email('Please provide a valid email address')
     .toLowerCase()
     .trim(),
+  phoneNumber: z
+    .string()
+    .min(10, 'Phone number must be at least 11 characters long')
+    .max(15, 'Phone number cannot exceed 11 characters'),
   password: z
     .string()
     .min(6, 'Password must be at least 6 characters long')
@@ -24,7 +28,6 @@ export const registerSchema = z.object({
 // User login validation schema
 export const loginSchema = z.object({
   email: z
-    .string()
     .email('Please provide a valid email address')
     .toLowerCase()
     .trim(),

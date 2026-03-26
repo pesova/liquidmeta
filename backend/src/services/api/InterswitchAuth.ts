@@ -39,7 +39,6 @@ class InterswitchAuth {
   }
 
   private getBasicAuth(clientId: string, clientSecret: string): string {
-    console.log({ clientId, clientSecret });
     return Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
   }
 
@@ -51,7 +50,7 @@ class InterswitchAuth {
       return cached.token;
     }
 
-    const { clientId, clientSecret, passportUrl, baseUrl } = this.getCredentials(type);
+    const { clientId, clientSecret, baseUrl } = this.getCredentials(type);
 
     const response = await axios.post<InterswitchToken>(
       `${baseUrl}/passport/oauth/token?grant_type=client_credentials`,
