@@ -3,7 +3,7 @@ import { ClientSession } from 'mongoose';
 
 import { Product } from '../models/Product';
 import { Order } from '../models/Order';
-import { EscrowTransaction } from '../models/EscrowTransaction';
+import { EscrowStatus, EscrowTransaction } from '../models/EscrowTransaction';
 import NotificationService from './NotificationService';
 import { NotificationCategoryEnum } from '../interfaces/INotification';
 import { EmailTemplateEnum } from './SmtpProvider';
@@ -92,17 +92,17 @@ async onboard(
   }
 
   async getBalance(vendorId: string) {
-    const orders = await Order.find({ vendorId }).select('_id');
+    const orders = await Order.find({ vendor: vendorId }).select('_id');
     const orderIds = orders.map((o) => o._id);
     const agg = await EscrowTransaction.aggregate([
-      { $match: { orderId: { $in: orderIds } } },
+      { $match: { order: { $in: orderIds } } },
       { $group: { _id: '$status', total: { $sum: '$amount' } } }
     ]);
     let escrow = 0;
     let available = 0;
     for (const g of agg) {
-      if (g._id === 'HELD') escrow = g.total;
-      if (g._id === 'RELEASED') available = g.total;
+      if (g._id === EscrowStatus.HOLDING) escrow = g.total;
+      if (g._id === EscrowStatus.RELEASED) available = g.total;
     }
     return { escrow, available };
   }

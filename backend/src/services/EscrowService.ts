@@ -158,7 +158,7 @@ class EscrowService {
    * Get escrow record for an order (for admin / vendor balance views).
    */
   public async getByOrderId(orderId: string) {
-    return EscrowTransaction.findOne({ orderId: new Types.ObjectId(orderId) });
+    return EscrowTransaction.find({ order: new Types.ObjectId(orderId) });
   }
 
   /**

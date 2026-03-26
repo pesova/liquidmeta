@@ -75,7 +75,6 @@ export const handleWebhookPost = async (req: Request, res: Response) => {
 export const getEscrowByOrder = async (req: Request, res: Response) => {
   try {
     const escrow = await EscrowService.getByOrderId(req.params.orderId as string);
-
     if (!escrow) {
       return res.status(404).json({ success: false, message: 'No escrow record found for this order' });
     }
@@ -107,6 +106,8 @@ export const checkTransactionStatus = async (req: Request, res: Response) => {
     const result = await InterswitchProvider.verifyTransaction(reference as string, amountKobo);
     if (result.responseCode === '00') {
       // Successful payment – finalize escrow
+      // TODO: notify vendor of successful payment
+
       await EscrowService.finalizeEscrow(escrowRecord.order.toString(), result.paymentReference);
     }
     res.status(200).json({ success: true, data: result });
