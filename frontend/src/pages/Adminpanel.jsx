@@ -273,31 +273,31 @@ export default function AdminPanel() {
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(""), 3000); };
 
   /* ── Actions ── */
-  const handleVerifyVendor = (id) => {
+  const handleVerifyVendor = async (id) => {
     setVendors(vs => vs.map(v => v.id === id ? { ...v, verified: true } : v));
     showToast("Vendor verified successfully");
     try { await adminAPI.verifyVendor(id); } catch {}
   };
 
-  const handleSuspendVendor = (id) => {
+  const handleSuspendVendor = async (id) => {
     setVendors(vs => vs.map(v => v.id === id ? { ...v, status: v.status === "suspended" ? "active" : "suspended" } : v));
     showToast("Vendor status updated");
     try { await adminAPI.suspendVendor(id); } catch {}
   };
 
-  const handleReleaseFunds = (txnId) => {
+  const handleReleaseFunds = async (txnId) => {
     setTransactions(ts => ts.map(t => t.id === txnId ? { ...t, status: "COMPLETED", escrow: 0 } : t));
     showToast("Funds released to vendor");
     try { await adminAPI.releaseFunds(txnId); } catch {}
   };
 
-  const handleResolveDispute = (disputeId, decision, note) => {
+  const handleResolveDispute = async (disputeId, decision, note) => {
     setDisputes(ds => ds.map(d => d.id === disputeId ? { ...d, status: "resolved", decision, note } : d));
     showToast(`Dispute resolved — ${decision === "buyer" ? "Buyer refunded" : decision === "vendor" ? "Funds released to vendor" : "Split 50/50"}`);
     try { await adminAPI.resolveDispute(disputeId, { decision, note }); } catch {}
   };
 
-  const handleUpdateBalance = (txnId, newValue, note) => {
+  const handleUpdateBalance = async (txnId, newValue, note) => {
     setTransactions(ts => ts.map(t => t.id === txnId ? { ...t, escrow: newValue } : t));
     showToast(`Balance updated for ${txnId}`);
     try { await adminAPI.updateBalance(txnId, { amount: newValue, note }); } catch {}
