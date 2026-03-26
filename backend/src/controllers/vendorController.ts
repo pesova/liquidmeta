@@ -36,7 +36,8 @@ export const onboardVendor = async (req: Request, res: Response) => {
     await AuthService.register({
       name: data.name!,
       email: data.email!,
-      password: data.password!
+      password: data.password!,
+      phoneNumber: data.phoneNumber
     });
 
     const user = await User.findOne({ email: data.email }).session(session);
