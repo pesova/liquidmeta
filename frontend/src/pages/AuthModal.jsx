@@ -181,10 +181,16 @@ export default function AuthModal({ isOpen, onClose, defaultTab="login" }) {
     if (form.role === "vendor") { setStep(2); return; }
     setLoading(true);
     try {
-      await authAPI.register({ name: form.fullName, email: form.email, password: form.password });
+      await authAPI.register({ 
+        name: form.fullName, 
+        email: form.email, 
+        password: form.password,
+        phoneNumber: form.phone,
+      });
       setFeedback({
         type: "success", title: "Account Created!", name: form.fullName, role: "buyer",
-        message: "Check your email to verify your account, then start shopping!"
+        verifyEmail: form.email,
+        message: "Check your email for a 6-digit verification code!"
       });
     } catch (err) {
       setFeedback({ type: "error", title: "Registration Failed", message: err.message || "Something went wrong." });
@@ -230,8 +236,18 @@ export default function AuthModal({ isOpen, onClose, defaultTab="login" }) {
   };
 
   const handleFeedbackContinue = () => {
-    if (feedback.type === "success") { onClose(); navigate(feedback.role==="vendor" ? "/vendor/dashboard" : "/chat"); }
-    else setFeedback(null);
+    if (feedback.type === "success") {
+      onClose();
+      if (feedback.verifyEmail) {
+        navigate(`/verify-email?email=${encodeURIComponent(feedback.verifyEmail)}`);
+      } else if (feedback.role === "vendor") {
+        navigate("/vendor/dashboard");
+      } else {
+        navigate("/chat");
+      }
+    } else {
+      setFeedback(null);
+    }
   };
 
   const totalSteps = form.role === "vendor" ? 2 : 1;
