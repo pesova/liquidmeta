@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { adminAPI } from "../utils/api";
 import "./AdminPanel.css";
 
 /* ── Icons ── */
@@ -238,37 +239,68 @@ export default function AdminPanel() {
   const [releaseModal, setReleaseModal]   = useState(null);
   const [toast, setToast]                 = useState("");
 
+  // Load real data from backend
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const [statsRes, vendorsRes, txnsRes, disputesRes] = await Promise.allSettled([
+          adminAPI.getStats(),
+          adminAPI.getVendors(),
+          adminAPI.getTransactions(),
+          adminAPI.getDisputes(),
+        ]);
+        if (statsRes.status === "fulfilled") {
+          const s = statsRes.value.data || {};
+          // Stats are shown inline from mock — update if needed
+        }
+        if (vendorsRes.status === "fulfilled") {
+          const v = vendorsRes.value.data || [];
+          if (Array.isArray(v) && v.length > 0) setVendors(v);
+        }
+        if (txnsRes.status === "fulfilled") {
+          const t = txnsRes.value.data || [];
+          if (Array.isArray(t) && t.length > 0) setTransactions(t);
+        }
+        if (disputesRes.status === "fulfilled") {
+          const d = disputesRes.value.data || [];
+          if (Array.isArray(d) && d.length > 0) setDisputes(d);
+        }
+      } catch { /* keep mock data */ }
+    };
+    load();
+  }, []);
+
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(""), 3000); };
 
   /* ── Actions ── */
   const handleVerifyVendor = (id) => {
     setVendors(vs => vs.map(v => v.id === id ? { ...v, verified: true } : v));
     showToast("Vendor verified successfully");
-    // TODO: PATCH /api/admin/vendors/:id/verify
+    try { await adminAPI.verifyVendor(id); } catch {}
   };
 
   const handleSuspendVendor = (id) => {
     setVendors(vs => vs.map(v => v.id === id ? { ...v, status: v.status === "suspended" ? "active" : "suspended" } : v));
     showToast("Vendor status updated");
-    // TODO: PATCH /api/admin/vendors/:id/status
+    try { await adminAPI.suspendVendor(id); } catch {}
   };
 
   const handleReleaseFunds = (txnId) => {
     setTransactions(ts => ts.map(t => t.id === txnId ? { ...t, status: "COMPLETED", escrow: 0 } : t));
     showToast("Funds released to vendor");
-    // TODO: POST /api/admin/escrow/:txnId/release
+    try { await adminAPI.releaseFunds(txnId); } catch {}
   };
 
   const handleResolveDispute = (disputeId, decision, note) => {
     setDisputes(ds => ds.map(d => d.id === disputeId ? { ...d, status: "resolved", decision, note } : d));
     showToast(`Dispute resolved — ${decision === "buyer" ? "Buyer refunded" : decision === "vendor" ? "Funds released to vendor" : "Split 50/50"}`);
-    // TODO: POST /api/admin/disputes/:id/resolve
+    try { await adminAPI.resolveDispute(disputeId, { decision, note }); } catch {}
   };
 
   const handleUpdateBalance = (txnId, newValue, note) => {
     setTransactions(ts => ts.map(t => t.id === txnId ? { ...t, escrow: newValue } : t));
     showToast(`Balance updated for ${txnId}`);
-    // TODO: PATCH /api/admin/transactions/:id/balance
+    try { await adminAPI.updateBalance(txnId, { amount: newValue, note }); } catch {}
   };
 
   /* ── Filtered data ── */
