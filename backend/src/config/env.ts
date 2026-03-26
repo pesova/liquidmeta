@@ -36,6 +36,13 @@ interface EnvironmentConfig {
   CLOUDINARY_API_KEY: string;
   CLOUDINARY_API_SECRET: string;
   ADMIN_PASSWORD: string;
+  WHATSAPP_ACCESS_TOKEN: string;
+  WHATSAPP_PHONE_NUMBER_ID: string;
+  WHATSAPP_VERIFY_TOKEN: string;
+  WHATSAPP_APP_SECRET: string;
+  REDIS_URL: string;
+  REDIS_HOST: string;
+  REDIS_PORT: number;
 }
 
 class EnvConfig {
@@ -116,6 +123,13 @@ class EnvConfig {
       CLOUDINARY_CLOUD_NAME: this.getString("CLOUDINARY_CLOUD_NAME", ""),
       OPENAI_API_KEY: this.getString("OPENAI_API_KEY", ""),
       ADMIN_PASSWORD: this.getString("ADMIN_PASSWORD", ""),
+      WHATSAPP_ACCESS_TOKEN: this.getString("WHATSAPP_ACCESS_TOKEN", ""),
+      WHATSAPP_PHONE_NUMBER_ID: this.getString("WHATSAPP_PHONE_NUMBER_ID", ""),
+      WHATSAPP_VERIFY_TOKEN: this.getString("WHATSAPP_VERIFY_TOKEN", ""),
+      WHATSAPP_APP_SECRET: this.getString("WHATSAPP_APP_SECRET", ""),
+      REDIS_URL: this.getString("REDIS_URL", ""),
+      REDIS_HOST: this.getString("REDIS_HOST", ""),
+      REDIS_PORT: this.getNumber("REDIS_PORT", 6379),
     };
   }
 
@@ -224,6 +238,31 @@ class EnvConfig {
     return this.config.ADMIN_PASSWORD;
   }
 
+  // WhatsApp integration vars
+  get WHATSAPP_ACCESS_TOKEN(): string {
+    return this.config.WHATSAPP_ACCESS_TOKEN;
+  }
+  get WHATSAPP_PHONE_NUMBER_ID(): string {
+    return this.config.WHATSAPP_PHONE_NUMBER_ID;
+  }
+  get WHATSAPP_VERIFY_TOKEN(): string {
+    return this.config.WHATSAPP_VERIFY_TOKEN;
+  }
+  get WHATSAPP_APP_SECRET(): string {
+    return this.config.WHATSAPP_APP_SECRET;
+  }
+  get REDIS_URL(): string {
+    return this.config.REDIS_URL;
+  }
+
+  get REDIS_HOST(): string {
+    return this.config.REDIS_HOST;
+  }
+
+  get REDIS_PORT(): number {
+    return this.config.REDIS_PORT;
+  }
+
   get CLOUDINARY_API_SECRET(): string {
     return this.config.CLOUDINARY_API_SECRET;
   }
@@ -238,6 +277,11 @@ class EnvConfig {
       "INTERSWITCH_CLIENT_SECRET",
       "INTERSWITCH_MARKETPLACE_CLIENT_ID",
       "INTERSWITCH_MARKETPLACE_CLIENT_SECRET",
+      "WHATSAPP_ACCESS_TOKEN",
+      "WHATSAPP_PHONE_NUMBER_ID",
+      "WHATSAPP_VERIFY_TOKEN",
+      "WHATSAPP_APP_SECRET",
+      "REDIS_URL",
     ];
     const missing = required.filter((key) => !process.env[key]);
 

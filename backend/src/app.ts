@@ -10,6 +10,7 @@ import chatRoutes from './routes/chat';
 import orderRoutes from './routes/order';
 import paymentRoutes from './routes/payment';
 import adminRoutes from './routes/admin';
+import whatsappRoutes from './integrations/whatsapp/routes/whatsapp.routes';
 
 connectDB();
 
@@ -19,6 +20,8 @@ app.use(cors({
   origin: env.FRONTEND_URL,
   credentials: true
 }));
+// Parse raw body for WhatsApp webhook (required for HMAC verification)
+// app.use('/api/whatsapp', express.raw({ type: 'application/json' }));
 app.use(express.json());
 
 // API Routes
@@ -29,6 +32,7 @@ app.use('/api/chat', chatRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/whatsapp', whatsappRoutes);
 
 // Test route
 app.get('/', (req: Request, res: Response) => {
