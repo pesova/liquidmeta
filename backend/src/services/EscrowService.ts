@@ -51,6 +51,53 @@ class EscrowService {
     });
 
     console.log(`EscrowService: funds locked for order ${orderId} — ₦${amount / 100}`);
+
+  }
+  /**
+   * Initiate an escrow record when payment link is created.
+   * Sets status to INITIATED and stores the Interswitch reference.
+   */
+  public async initiateEscrow(params: {
+    orderId: string;
+    buyerId: string;
+    vendorId: string;
+    amount: number;
+    interswitchRef: string;
+  }): Promise<void> {
+    const { orderId, buyerId, vendorId, amount, interswitchRef } = params;
+    const existing = await EscrowTransaction.findOne({ interswitchRef });
+    if (existing) {
+      console.log(`EscrowService: escrow already exists for ref ${interswitchRef} — skipping init`);
+      return;
+    }
+    await EscrowTransaction.create({
+      order: new Types.ObjectId(orderId),
+      buyer: new Types.ObjectId(buyerId),
+      vendor: new Types.ObjectId(vendorId),
+      amount,
+      status: EscrowStatus.INITIATED,
+      interswitchRef,
+    });
+    console.log(`EscrowService: initiated escrow for order ${orderId}`);
+  }
+
+  /**
+   * Finalize escrow after successful payment verification.
+   * Moves escrow from INITIATED to HOLDING and updates order status.
+   */
+  public async finalizeEscrow(orderId: string, interswitchPaymentId?: string): Promise<void> {
+    const escrow = await EscrowTransaction.findOne({
+      order: new Types.ObjectId(orderId),
+      status: EscrowStatus.INITIATED,
+    });
+    if (!escrow) {
+      throw new Error(`No initiated escrow found for order ${orderId}`);
+    }
+    escrow.status = EscrowStatus.HOLDING;
+    if (interswitchPaymentId) escrow.interswitchPaymentId = interswitchPaymentId;
+    await escrow.save();
+    await Order.findByIdAndUpdate(orderId, { status: OrderStatus.PAID_IN_ESCROW });
+    console.log(`EscrowService: escrow finalized and funds locked for order ${orderId}`);
   }
 
   /**
