@@ -40,7 +40,7 @@ class PaymentService {
       buyerId: buyerId,
       vendorId: order.vendor.toString(),
       amount: amountKobo,
-      interswitchRef: payBillResponse.reference,
+      interswitchRef: payBillResponse.transactionReference,
     });
     return {
       paymentUrl:       payBillResponse.paymentUrl,

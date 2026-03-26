@@ -33,6 +33,8 @@ export interface TransactionStatusResponse {
   responseCode: string; // '00' = payment successful
   responseDescription: string;
   transactionRef: string;
+  transactionDate: string;
+  paymentId: number;
   amount: number; // in kobo
   paymentReference?: string;
 }
@@ -55,6 +57,7 @@ class InterswitchProvider {
     customerEmail: string,
   ): Promise<PayBillResponse> {
     try {
+      let transactionRef = `REF_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
       const token = await InterswitchAuth.getToken();
       const payload = {
         merchantCode: this.merchantCode,
@@ -62,6 +65,7 @@ class InterswitchProvider {
         amount: String(amountKobo),
         redirectUrl: this.redirectUrl,
         customerId: customerEmail,
+        transactionReference: transactionRef,
         currencyCode: "566",
         customerEmail,
       };
@@ -135,13 +139,14 @@ class InterswitchProvider {
       );
     }
 
-    const data = await response.json();
-
+    const data = await response.json();    
     return {
       responseCode: data.ResponseCode ?? data.responseCode,
       responseDescription: data.ResponseDescription ?? data.responseDescription,
       transactionRef: data.TransactionReference ?? transactionRef,
       amount: data.Amount ?? amountKobo,
+      transactionDate: data.TransactionDate,
+      paymentId: data.PaymentId,
       paymentReference: data.PaymentReference,
     };
   }
