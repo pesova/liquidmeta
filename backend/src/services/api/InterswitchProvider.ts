@@ -66,6 +66,7 @@ class InterswitchProvider {
         redirectUrl: this.redirectUrl,
         customerId: customerEmail,
         transactionReference: transactionRef,
+        transactionReference: transactionRef,
         currencyCode: "566",
         customerEmail,
       };

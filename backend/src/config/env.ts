@@ -20,12 +20,11 @@ interface EnvironmentConfig {
 
   INTERSWITCH_CLIENT_ID: string;
   INTERSWITCH_CLIENT_SECRET: string;
-  INTERSWITCH_PASSPORT_URL: string;
   INTERSWITCH_API_URL: string;
 
   INTERSWITCH_MARKETPLACE_CLIENT_ID: string;
   INTERSWITCH_MARKETPLACE_CLIENT_SECRET: string;
-  INTERSWITCH_MARKETPLACE_PASSPORT_URL: string;
+  INTERSWITCH_MARKETPLACE_BASE_URL: string;
   INTERSWITCH_MARKETPLACE_API_URL: string;
   INTERSWITCH_CALLBACK_URL: string;
   INTERSWITCH_PAYABLE_CODE: string;
@@ -82,10 +81,6 @@ class EnvConfig {
         "INTERSWITCH_CLIENT_SECRET",
         "",
       ),
-      INTERSWITCH_PASSPORT_URL: this.getString(
-        "INTERSWITCH_PASSPORT_URL",
-        "https://qa.interswitchng.com/passport",
-      ),
       INTERSWITCH_API_URL: this.getString(
         "INTERSWITCH_API_URL",
         "https://api-marketplace-routing.k8.isw.la",
@@ -106,9 +101,9 @@ class EnvConfig {
         "INTERSWITCH_MARKETPLACE_CLIENT_SECRET",
         "",
       ),
-      INTERSWITCH_MARKETPLACE_PASSPORT_URL: this.getString(
-        "INTERSWITCH_MARKETPLACE_PASSPORT_URL",
-        "https://qa.interswitchng.com/passport",
+      INTERSWITCH_MARKETPLACE_BASE_URL: this.getString(
+        "INTERSWITCH_MARKETPLACE_BASE_URL",
+        "https://qa.interswitchng.com",
       ),
       INTERSWITCH_MARKETPLACE_API_URL: this.getString(
         "INTERSWITCH_MARKETPLACE_API_URL",
@@ -195,9 +190,6 @@ class EnvConfig {
   get INTERSWITCH_CLIENT_SECRET(): string {
     return this.config.INTERSWITCH_CLIENT_SECRET;
   }
-  get INTERSWITCH_PASSPORT_URL(): string {
-    return this.config.INTERSWITCH_PASSPORT_URL;
-  }
   get INTERSWITCH_API_URL(): string {
     return this.config.INTERSWITCH_API_URL;
   }
@@ -216,8 +208,8 @@ class EnvConfig {
   get INTERSWITCH_MARKETPLACE_CLIENT_SECRET(): string {
     return this.config.INTERSWITCH_MARKETPLACE_CLIENT_SECRET;
   }
-  get INTERSWITCH_MARKETPLACE_PASSPORT_URL(): string {
-    return this.config.INTERSWITCH_MARKETPLACE_PASSPORT_URL;
+  get INTERSWITCH_MARKETPLACE_BASE_URL(): string {
+    return this.config.INTERSWITCH_MARKETPLACE_BASE_URL;
   }
   get INTERSWITCH_MARKETPLACE_API_URL(): string {
     return this.config.INTERSWITCH_MARKETPLACE_API_URL;
