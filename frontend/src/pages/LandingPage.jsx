@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import AuthModal from "./AuthModal";
+import Marketlink from "../assets/Marketlink.jpg";
 
 const S = {
   root: {
@@ -258,6 +259,18 @@ const S = {
     textAlign: "center",
     maxWidth: "380px",
   },
+  bgOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    width: "100%",
+    height: "100%",
+    backgroundImage: `url(${Marketlink})`,
+    backgroundSize: "cover",
+    backgroundPosition: "center",
+    opacity: 0.4,
+    zIndex: -1,
+  },
 };
 
 const SOCIALS = [
@@ -278,6 +291,7 @@ export default function LandingPage() {
     <>
       <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
       <div style={S.root}>
+        <div style={S.bgOverlay}></div>
 
         {/* TOPBAR */}
         <header style={S.topbar}>
