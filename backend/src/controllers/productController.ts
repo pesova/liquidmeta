@@ -48,7 +48,6 @@ export const createProduct = async (req: Request, res: Response) => {
         .json({ success: false, message: "Product image is required" });
     }
     imageUrl = await uploadToCloudinary(req.file.buffer);
-    console.log({ vendor, imageUrl });
 
     const product = await ProductService.createProduct(
       { ...data, imageUrl },

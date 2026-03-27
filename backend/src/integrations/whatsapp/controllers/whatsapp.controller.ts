@@ -32,7 +32,6 @@ import { OrderService } from "../../../services";
 import PaymentService from "../../../services/PaymentService";
 
 export const verifyWebhook = (req: Request, res: Response) => {
-  console.log("verifyWebhook");
 
   const mode = req.query["hub.mode"];
   const token = req.query["hub.verify_token"];
@@ -85,15 +84,12 @@ export const handleIncomingMessage = async (
       }
     }
     if (message.type === "interaction") {
-      console.log("interaction", message);
-
       // return await handleInteraction(message.interactionId, message.from);
       return;
     }
 
     const pending = await getPendingAction(phone);
     const text = message.text;
-    console.log({ pending }, "pending action");
 
     if (pending?.type === "PRODUCT_SELECTION") {
       await handleProductSelection(phone, session, text);
@@ -135,8 +131,6 @@ export const handleIncomingMessage = async (
         type: "PRODUCT_SELECTION",
         payload: { products },
       });
-
-      console.log({ products });
 
       await sendTextMessage(
         phone,
@@ -258,7 +252,6 @@ async function handleDeliveryAddress(
       session.userId!,
       session.email!,
     );
-    console.log({paymentUrl}, 'initiatePayment');
 
     session.currentOrderId = order._id.toString();
     session.step = "ORDER_CREATED";
@@ -280,10 +273,7 @@ async function handleDeliveryAddress(
         `Reply *status* anytime to check your order.`,
     );
   } catch (err: any) {
-    console.log({err}, 'order error');
-    
-    console.error("Order creation error:", err?.message);
-    const userMessage = err?.message?.includes("Only")
+        const userMessage = err?.message?.includes("Only")
       ? `❌ ${err.message}`
       : "❌ Could not create your order. Please try again.";
 
@@ -307,7 +297,6 @@ async function handleOrderStatus(phone: string, session: WhatsAppSession) {
     const latest = orders[0];
     await sendTextMessage(phone, formatOrderStatus(latest));
   } catch (err) {
-    console.error("Order status error:", err);
     await sendTextMessage(
       phone,
       "⚠️ Could not fetch your orders. Please try again.",

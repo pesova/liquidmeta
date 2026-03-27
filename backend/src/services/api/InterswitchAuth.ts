@@ -62,9 +62,7 @@ class InterswitchAuth {
           Authorization: `Basic ${this.getBasicAuth(clientId, clientSecret)}`,
         },
       },
-    );
-    console.log({token: response.data.access_token}, 'response.data.access_token');
-    
+    );    
     this.cache[type] = {
       token: response.data.access_token,
       expiresAt: Date.now() + response.data.expires_in * 1000,

@@ -109,9 +109,6 @@ class PaymentService {
     // Finalize escrow after successful verification
     await EscrowService.finalizeEscrow(order._id.toString(), statusResult.paymentReference);
 
-
-    console.log(`PaymentService: payment confirmed and escrowed for order ${order._id}`);
-
     return {
       success:       true,
       orderId:       order._id.toString(),

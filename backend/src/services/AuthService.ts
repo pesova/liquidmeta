@@ -1,5 +1,6 @@
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import type { ClientSession } from "mongoose";
 import { User, IUser } from "../models/User";
 import { IRole, Role, RoleEnum } from "../models/Role";
 import NotificationService from "./NotificationService";
@@ -32,13 +33,24 @@ class AuthService {
     return Math.floor(100000 + Math.random() * 900000).toString();
   }
 
-  async register(userData: { name: string; email: string; password: string, phoneNumber: string }) {
-    const existingUser = await User.findOne({ email: userData.email });
+  async register(
+    userData: { name: string; email: string; password: string; phoneNumber: string },
+    session?: ClientSession,
+  ) {
+    let existingQuery = User.findOne({ email: userData.email });
+    if (session) {
+      existingQuery = existingQuery.session(session);
+    }
+    const existingUser = await existingQuery;
     if (existingUser) {
       throw new Error("User with this email already exists");
     }
 
-    const role = await Role.findOne({ name: RoleEnum.USER });
+    let roleQuery = Role.findOne({ name: RoleEnum.USER });
+    if (session) {
+      roleQuery = roleQuery.session(session);
+    }
+    const role = await roleQuery;
     if (!role) {
       throw new Error("User role not found. Please run seeders first.");
     }
@@ -46,7 +58,7 @@ class AuthService {
     const hashedPassword = await this.hashPassword(userData.password);
     const verificationToken = this.generateVerificationToken();
 
-    const user = await User.create({
+    const doc = {
       name: userData.name,
       email: userData.email,
       phoneNumber: userData.phoneNumber,
@@ -54,8 +66,14 @@ class AuthService {
       roleId: role._id,
       isEmailVerified: false,
       emailVerificationToken: verificationToken,
-    });
+    };
 
+    if (session) {
+      const [user] = await User.create([doc], { session });
+      return { user, verificationToken };
+    }
+
+    const user = await User.create(doc);
     return { user, verificationToken };
   }
 

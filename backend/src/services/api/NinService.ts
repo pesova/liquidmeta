@@ -20,9 +20,7 @@ class NinService {
 
   async verifyNin(payload: NinVerificationPayload): Promise<NinVerificationResponse> {
     try {
-        const token = await InterswitchAuth.getToken('marketplace');
-        console.log({token});
-    
+        const token = await InterswitchAuth.getToken('marketplace');    
         const response: AxiosResponse<VerifyNinResponse> = await axios.post(
           `${this.baseUrl}/marketplace-routing/api/v1/verify/identity/nin`,
           {
@@ -36,9 +34,7 @@ class NinService {
               'Authorization': `Bearer ${token}`
             }
           }
-        );
-        console.log(response.data, 'ninn');
-        
+        );        
         if(response.data?.data === null) {
             // TODO: no valid NIN for dev
           return {
@@ -54,9 +50,14 @@ class NinService {
         };
         
     } catch (error: any) {
-        console.log(error.response, 'ninn');
-        
-        throw error
+      const msg =
+        error?.response?.data?.message ||
+        error?.message ||
+        'NIN verification service error';
+      return {
+        verified: false,
+        message: msg,
+      };
     }
   }
 }

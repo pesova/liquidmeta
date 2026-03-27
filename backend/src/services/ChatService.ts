@@ -83,7 +83,6 @@ class ChatService {
     await this.archiveSession(session);
     session.messages = [];
     await session.save();
-    console.log("Session summarized. New summary:", session.summary);
     return session;
   }
 

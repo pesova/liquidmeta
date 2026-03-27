@@ -74,7 +74,6 @@ class EscrowService {
       status: EscrowStatus.INITIATED,
       interswitchRef,
     });
-    console.log(`EscrowService: initiated escrow for order ${orderId}`);
   }
 
   /**
@@ -171,7 +170,6 @@ class EscrowService {
       completedAt: new Date(),
     });
 
-    console.log(`EscrowService: funds released for order ${orderId}`);
   }
 
   public async refundForOrder(orderId: string): Promise<void> {
@@ -187,8 +185,6 @@ class EscrowService {
     escrow.status = EscrowStatus.REFUNDED;
     escrow.refundedAt = new Date();
     await escrow.save();
-
-    console.log(`EscrowService: funds marked for refund on order ${orderId}`);
   }
 
   /**

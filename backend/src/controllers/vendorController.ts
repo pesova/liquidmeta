@@ -18,59 +18,65 @@ export const onboardVendor = async (req: Request, res: Response) => {
 
   try {
     const data = handleValidation(onboardSchema, req.body);
-    
+
     const ninVerification = await NinService.verifyNin({
       firstName: data.firstName,
       lastName: data.lastName,
-      nin: data.nin
+      nin: data.nin,
     });
 
     if (!ninVerification.verified) {
       // await session.abortTransaction();
       // return res.status(400).json({
       //   success: false,
-      //   message: 'NIN verification failed. Please check your details.'
+      //   message:
+      //     ninVerification.message ||
+      //     'NIN verification failed. Please check your NIN and name match your official records.',
       // });
-      // TODO: restrict registration on NIN failure for prod
     }
 
-    await AuthService.register({
-      name: data.name!,
-      email: data.email!,
-      password: data.password!,
-      phoneNumber: data.phoneNumber
-    });
+    await AuthService.register(
+      {
+        name: data.name!,
+        email: data.email!,
+        password: data.password!,
+        phoneNumber: data.phoneNumber,
+      },
+      session,
+    );
 
-    const user = await User.findOne({ email: data.email }).session(session);
+    const user = await User.findOne({ email: data.email }).session(session).exec();
     if (!user) throw new Error('Failed to create user account');
-    console.log(ninVerification.verified, 'ninVerification.verified', ninVerification.data?.status);
-    
-    const vendor = await VendorService.onboard(user._id.toString(), {
-      firstName: data.firstName,
-      lastName: data.lastName,
-      businessName: data.businessName,
-      nin: data.nin,
-      ninData: ninVerification.verified ? {
-        appliicant: ninVerification.data?.applicant,
-        summary: ninVerification.data?.summary,
-        status: ninVerification.data?.status
-      } : undefined,
-      phoneNumber: data.phoneNumber
-    }, session);
+
+    const vendor = await VendorService.onboard(
+      user._id.toString(),
+      {
+        firstName: data.firstName,
+        lastName: data.lastName,
+        businessName: data.businessName,
+        nin: data.nin,
+        ninData: {
+          applicant: ninVerification.data?.applicant,
+          summary: ninVerification.data?.summary,
+          status: ninVerification.data?.status,
+        },
+        phoneNumber: data.phoneNumber,
+      },
+      session,
+    );
 
     await session.commitTransaction();
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       message: 'Account and vendor profile created. Please verify your email.',
-      data: { vendor, user }
+      data: { vendor, user },
     });
-
   } catch (error: any) {
     await session.abortTransaction();
-    console.log({error});
-    
-    throw error
+    throw error;
+  } finally {
+    session.endSession();
   }
 };
 
@@ -90,25 +96,35 @@ export const onboardExistingVendor = async (req: Request, res: Response) => {
     const ninVerification = await NinService.verifyNin({
       firstName: data.firstName,
       lastName: data.lastName,
-      nin: data.nin
+      nin: data.nin,
     });
 
     if (!ninVerification.verified) {
       // await session.abortTransaction();
       // return res.status(400).json({
       //   success: false,
-      //   message: 'NIN verification failed. Please check your details.'
+      //   message:
+      //     ninVerification.message ||
+      //     'NIN verification failed. Please check your NIN and name match your official records.',
       // });
-      // TODO: restrict registration on NIN failure for prod
     }
 
-    const vendor = await VendorService.onboard(user._id.toString(), {
-      firstName: data.firstName,
-      lastName: data.lastName,
-      businessName: data.businessName,
-      nin: data.nin,
-      phoneNumber: data.phoneNumber
-    }, session);
+    const vendor = await VendorService.onboard(
+      user._id.toString(),
+      {
+        firstName: data.firstName,
+        lastName: data.lastName,
+        businessName: data.businessName,
+        nin: data.nin,
+        ninData: {
+          applicant: ninVerification.data?.applicant,
+          summary: ninVerification.data?.summary,
+          status: ninVerification.data?.status,
+        },
+        phoneNumber: data.phoneNumber,
+      },
+      session,
+    );
 
     await session.commitTransaction();
 

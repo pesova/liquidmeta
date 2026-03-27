@@ -21,9 +21,7 @@ export async function sendTextMessage(to: string, message: string) {
             },
           }
         );
-    } catch (error: any) {
-      console.log({error}, 'sendTextMessage error');
-      
+    } catch (error: any) {      
         console.log(error.response?.data);
         
     }
