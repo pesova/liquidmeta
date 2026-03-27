@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { TransactionWebhookPayload, WebhookTransactionEvent } from '../interfaces/Iwebhook';
+import { TransactionWebhookPayload, WebhookTransactionEvent } from '../interfaces/IWebhook';
 import { EscrowService } from '../services';
 
 export const handleWebhook = async (req: Request, res: Response) => {
