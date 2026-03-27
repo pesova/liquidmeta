@@ -20,7 +20,7 @@ const S = {
     justifyContent: "space-between",
     padding: "16px 28px",
     borderBottom: "1px solid rgba(255,255,255,0.05)",
-    background: "rgba(0,0,0,0.4)",
+    background: "rgba(20,25,35,0.85)", //
     backdropFilter: "blur(12px)",
     position: "sticky",
     top: 0,
