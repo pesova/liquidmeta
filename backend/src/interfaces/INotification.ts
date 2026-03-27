@@ -2,6 +2,7 @@ export enum NotificationCategoryEnum {
   AUTH = 'auth',
   ORDER = 'order',
   PAYMENT = 'payment',
+  TRANSACTION = 'transaction',
   ESCROW = 'escrow',
   GENERAL = 'general'
 }
