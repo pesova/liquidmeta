@@ -9,6 +9,7 @@ import NinService from "../services/api/NinService";
 import mongoose from "mongoose";
 import { AuthService } from "../services";
 import { User } from "../models";
+import { formatKoboToNaira } from "../utils";
 
 // For new users — no auth required
 export const onboardVendor = async (req: Request, res: Response) => {
@@ -159,7 +160,11 @@ export const getOrders = async (req: Request, res: Response) => {
 export const getBalance = async (req: Request, res: Response) => {
   try {
     const vendor = (req as any).vendor;
-    const balance = await VendorService.getBalance(vendor._id);
+    const { escrow, available } = await VendorService.getBalance(vendor._id);
+    const balance = {
+      escrow: formatKoboToNaira(escrow),
+      available: formatKoboToNaira(available),
+    };
     res.json({ success: true, data: balance });
   } catch (error: any) {
     throw error

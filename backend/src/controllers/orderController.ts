@@ -98,6 +98,8 @@ export const confirmDelivery = async (req: Request, res: Response) => {
       req.params.orderId as string,
       user._id.toString()
     );
+    // TODO: Release funds to vendor
+    // notify vendor of delivery
 
     res.status(200).json({
       success: true,

@@ -26,14 +26,12 @@ class InterswitchAuth {
       return {
         clientId: env.INTERSWITCH_MARKETPLACE_CLIENT_ID,
         clientSecret: env.INTERSWITCH_MARKETPLACE_CLIENT_SECRET,
-        passportUrl: env.INTERSWITCH_MARKETPLACE_PASSPORT_URL,
-        baseUrl: env.INTERSWITCH_API_URL
+        baseUrl: env.INTERSWITCH_MARKETPLACE_BASE_URL
       };
     }
     return {
       clientId: env.INTERSWITCH_CLIENT_ID,
       clientSecret: env.INTERSWITCH_CLIENT_SECRET,
-      passportUrl: env.INTERSWITCH_PASSPORT_URL,
       baseUrl: env.INTERSWITCH_API_URL
     };
   }
@@ -65,7 +63,8 @@ class InterswitchAuth {
         },
       },
     );
-
+    console.log({token: response.data.access_token}, 'response.data.access_token');
+    
     this.cache[type] = {
       token: response.data.access_token,
       expiresAt: Date.now() + response.data.expires_in * 1000,

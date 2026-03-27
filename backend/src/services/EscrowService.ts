@@ -1,18 +1,12 @@
-import { Types } from 'mongoose';
-import { EscrowTransaction, EscrowStatus } from '../models/EscrowTransaction';
-import { Order, OrderStatus } from '../models/Order';
+import { Types } from "mongoose";
+import { EscrowTransaction, EscrowStatus } from "../models/EscrowTransaction";
+import { Order, OrderStatus } from "../models/Order";
+import NotificationService from "./NotificationService";
+import { NotificationCategoryEnum } from "../interfaces/INotification";
+import { IVendor } from "../models";
+import { PopulatedOrder } from "../interfaces/IEscrow";
 
-/**
- * EscrowService
- *
- * Owns all escrow state transitions.
- * Called by PaymentService (on webhook) and OrderService (on delivery confirm / cancel).
- *
- * Escrow lifecycle:
- *   createForOrder()   — called after Interswitch confirms payment — status: HOLDING
- *   releaseForOrder()  — called after buyer confirms delivery     — status: RELEASED
- *   refundForOrder()   — called when order is cancelled from escrow — status: REFUNDED
- */
+
 class EscrowService {
   /**
    * Lock funds in escrow after successful payment.
@@ -26,12 +20,18 @@ class EscrowService {
     interswitchRef: string;
     interswitchPaymentId?: string;
   }): Promise<void> {
-    const { orderId, buyerId, vendorId, amount, interswitchRef, interswitchPaymentId } = params;
+    const {
+      orderId,
+      buyerId,
+      vendorId,
+      amount,
+      interswitchRef,
+      interswitchPaymentId,
+    } = params;
 
     // Guard: don't double-create escrow for the same transaction ref
     const existing = await EscrowTransaction.findOne({ interswitchRef });
     if (existing) {
-      console.log(`EscrowService: escrow already exists for ref ${interswitchRef} — skipping`);
       return;
     }
 
@@ -49,9 +49,6 @@ class EscrowService {
     await Order.findByIdAndUpdate(orderId, {
       status: OrderStatus.PAID_IN_ESCROW,
     });
-
-    console.log(`EscrowService: funds locked for order ${orderId} — ₦${amount / 100}`);
-
   }
   /**
    * Initiate an escrow record when payment link is created.
@@ -67,7 +64,6 @@ class EscrowService {
     const { orderId, buyerId, vendorId, amount, interswitchRef } = params;
     const existing = await EscrowTransaction.findOne({ interswitchRef });
     if (existing) {
-      console.log(`EscrowService: escrow already exists for ref ${interswitchRef} — skipping init`);
       return;
     }
     await EscrowTransaction.create({
@@ -85,29 +81,77 @@ class EscrowService {
    * Finalize escrow after successful payment verification.
    * Moves escrow from INITIATED to HOLDING and updates order status.
    */
-  public async finalizeEscrow(orderId: string, interswitchPaymentId?: string): Promise<void> {
+  public async finalizeEscrow(
+    interswitchRef: string,
+    interswitchPaymentId?: string,
+  ): Promise<void> {
     const escrow = await EscrowTransaction.findOne({
-      order: new Types.ObjectId(orderId),
+      interswitchRef,
       status: EscrowStatus.INITIATED,
     });
+
     if (!escrow) {
-      throw new Error(`No initiated escrow found for order ${orderId}`);
+      return;
     }
+
+    const order = await Order.findByIdAndUpdate(
+      escrow.order,
+      { status: OrderStatus.PAID_IN_ESCROW },
+      { new: true },
+    )
+      .populate<{ buyer: { _id: any; email: string; name: string } }>(
+        "buyer",
+        "name email",
+      )
+      .populate({
+        path: "vendor",
+        populate: {
+          path: "user",
+          select: "name email",
+        },
+      })
+      .populate("product", "name");
+
+    const typedOrder = order as unknown as PopulatedOrder;
+
     escrow.status = EscrowStatus.HOLDING;
-    if (interswitchPaymentId) escrow.interswitchPaymentId = interswitchPaymentId;
+    if (interswitchPaymentId)
+      escrow.interswitchPaymentId = interswitchPaymentId;
     await escrow.save();
-    await Order.findByIdAndUpdate(orderId, { status: OrderStatus.PAID_IN_ESCROW });
-    console.log(`EscrowService: escrow finalized and funds locked for order ${orderId}`);
+    if (!order) {
+      return;
+    }
+    await NotificationService.setTo({
+      userId: order.buyer._id,
+      email: order.buyer.email,
+    })
+      .setSubject("Payment Successful – Escrow Secured")
+      .setMessage(
+        `Your payment of ₦${order.totalAmount} has been secured in escrow. We will release it once the order is completed.`,
+      )
+      .setCategory(NotificationCategoryEnum.TRANSACTION)
+      .setDetails({
+        orderId: order._id,
+        amount: order.totalAmount,
+      })
+      .sendBoth();
+
+    await NotificationService.setTo({
+      userId: order.vendor._id,
+      email: typedOrder.vendor?.user?.email,
+    })
+      .setSubject("New Order Ready for Shipment")
+      .setMessage(
+        `You have received payment for order ${order._id}. Please proceed to ship the product.`,
+      )
+      .setCategory(NotificationCategoryEnum.TRANSACTION)
+      .setDetails({
+        orderId: order._id,
+        product: order.product,
+      })
+      .sendBoth();
   }
 
-  /**
-   * Release funds to vendor after buyer confirms delivery.
-   * Moves escrow to RELEASED and order to COMPLETED.
-   *
-   * NOTE: In a real system this would trigger a bank transfer to the vendor's
-   * settlement account. For MVP, "release" means marking the record — your
-   * finance/admin layer handles the actual payout run.
-   */
   public async releaseForOrder(orderId: string): Promise<void> {
     const escrow = await EscrowTransaction.findOne({
       orderId: new Types.ObjectId(orderId),
@@ -130,13 +174,6 @@ class EscrowService {
     console.log(`EscrowService: funds released for order ${orderId}`);
   }
 
-  /**
-   * Refund buyer when order is cancelled from PAID_IN_ESCROW.
-   * Moves escrow to REFUNDED.
-   *
-   * NOTE: Same as release — the actual Interswitch refund API call should be
-   * wired here once you have settlement credentials. For MVP, mark the record.
-   */
   public async refundForOrder(orderId: string): Promise<void> {
     const escrow = await EscrowTransaction.findOne({
       orderId: new Types.ObjectId(orderId),
@@ -158,7 +195,7 @@ class EscrowService {
    * Get escrow record for an order (for admin / vendor balance views).
    */
   public async getByOrderId(orderId: string) {
-    return EscrowTransaction.findOne({ orderId: new Types.ObjectId(orderId) });
+    return EscrowTransaction.find({ order: new Types.ObjectId(orderId) });
   }
 
   /**
@@ -176,7 +213,7 @@ class EscrowService {
       {
         $group: {
           _id: null,
-          total: { $sum: '$amount' },
+          total: { $sum: "$amount" },
         },
       },
     ]);
@@ -200,7 +237,7 @@ class EscrowService {
       {
         $group: {
           _id: null,
-          total: { $sum: '$amount' },
+          total: { $sum: "$amount" },
         },
       },
     ]);
