@@ -16,7 +16,7 @@ import webhookRoutes from './routes/webhook';
 const app = express();
 
 app.use(cors({
-  origin: env.FRONTEND_URL,
+  origin: '*',
   credentials: true
 }));
 // Parse raw body for WhatsApp webhook (required for HMAC verification)
