@@ -1,14 +1,20 @@
 import EscrowService from '../services/EscrowService';
 import { EscrowTransaction } from '../models/EscrowTransaction';
 import { User } from '../models/User';
-import { Order } from '../models/Order';
+import { Order, OrderStatus } from '../models/Order';
+import { Vendor } from '../models/Vendor';
 
 class AdminService {
   async getAllEscrows() {
     return EscrowTransaction.find()
-      .populate('order', '_id')
-      .populate('buyer', 'email')
-      .populate('vendor', 'email');
+      .sort({ createdAt: -1 })
+      .populate({
+        path: 'order',
+        select: 'status totalAmount createdAt',
+        populate: { path: 'product', select: 'name' },
+      })
+      .populate('buyer', 'name email')
+      .populate('vendor', 'businessName firstName lastName');
   }
 
   async getVendorBalances(vendorId: string) {
@@ -34,14 +40,28 @@ class AdminService {
     const skip = (page - 1) * limit;
     const [orders, total] = await Promise.all([
       Order.find()
-        .populate('buyer', 'email')
-        .populate('vendor', 'email')
-        .populate('product', 'name')
+        .sort({ createdAt: -1 })
+        .populate('buyer', 'name email')
+        .populate('vendor', 'businessName firstName lastName')
+        .populate('product', 'name price')
         .skip(skip)
         .limit(limit),
       Order.countDocuments(),
     ]);
     return { orders, total, page, limit };
+  }
+
+  async getAllVendors(page = 1, limit = 50) {
+    const skip = (page - 1) * limit;
+    const [vendors, total] = await Promise.all([
+      Vendor.find()
+        .sort({ createdAt: -1 })
+        .populate('user', 'name email')
+        .skip(skip)
+        .limit(limit),
+      Vendor.countDocuments(),
+    ]);
+    return { vendors, total, page, limit };
   }
 
   // Resolve dispute
@@ -50,6 +70,10 @@ class AdminService {
       await EscrowService.releaseForOrder(orderId);
     } else if (action === 'refund') {
       await EscrowService.refundForOrder(orderId);
+      await Order.findByIdAndUpdate(orderId, {
+        status: OrderStatus.CANCELLED,
+        cancelledAt: new Date(),
+      }).exec();
     } else {
       throw new Error("action must be 'release' or 'refund'");
     }
