@@ -65,7 +65,7 @@ const mockFallback = (userText, allMessages) => {
     return {
       message: `Here are the best ${category.toLowerCase()} under ₦${maxPrice.toLocaleString()} from verified vendors. All purchases are escrow-protected! 🛡️`,
       intent: "show_products", readyToShow: true, filters: { category, maxPrice },
-      suggestions: ["Show me cheaper", "Different category?", "How does escrow work?", "Add to cart"],
+      suggestions: ["Show me cheaper", "Different category?", "How does escrow work?"],
     };
   }
 

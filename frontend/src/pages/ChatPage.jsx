@@ -4,11 +4,12 @@ import "./ChatPage.css";
 import ProductDetailModal from "./ProductDetailModal";
 import { sendChatMessage, getHistory } from "../services/chatService";
 import { AuthContext } from "../context/AuthContext";
+import { fetchProductById } from "../services/productService";
 
 /* ── Icons ── */
 const IconSend     = () => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>);
 const IconBot      = () => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="8" width="18" height="13" rx="3"/><path d="M8 8V6a4 4 0 0 1 8 0v2"/><circle cx="9" cy="14" r="1.2" fill="currentColor" stroke="none"/><circle cx="15" cy="14" r="1.2" fill="currentColor" stroke="none"/><path d="M9 18h6"/></svg>);
-const IconCart     = () => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>);
+const IconOrders   = () => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>);
 const IconPackage  = () => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>);
 const IconExpand   = () => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>);
 const IconRefresh  = () => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>);
@@ -31,12 +32,16 @@ const FALLBACK_COLORS = ["#d4a017","#4ade80","#60a5fa","#f472b6","#a78bfa","#34d
 const getFallbackColor = (id) => FALLBACK_COLORS[(id?.charCodeAt(0) ?? 0) % FALLBACK_COLORS.length];
 
 /* ── Product card inline in chat ── */
-const ChatProduct = ({ p, onView }) => {
+const ChatProduct = ({ p, onView, busy }) => {
   const [imgError, setImgError] = useState(false);
   const fallbackColor = getFallbackColor(p._id || p.id);
 
   return (
-    <div className="cp-inline-card" onClick={() => onView(p)}>
+    <div
+      className={`cp-inline-card${busy ? " cp-inline-card--busy" : ""}`}
+      onClick={() => !busy && onView(p)}
+      style={busy ? { pointerEvents: "none", opacity: 0.65 } : undefined}
+    >
       <div className="cp-inline-card__img" style={!p.imageUrl || imgError ? { background: `${fallbackColor}18` } : {}}>
         {p.imageUrl && !imgError ? (
           <img
@@ -52,10 +57,13 @@ const ChatProduct = ({ p, onView }) => {
       <div className="cp-inline-card__info">
         <div className="cp-inline-card__name">{p.name}</div>
         <div className="cp-inline-card__price">₦{Number(p.price).toLocaleString()}</div>
-        {p.vendor && <div className="cp-inline-card__vendor">{p.vendor}</div>}
-        {p.category && !p.vendor && (
+        {(typeof p.vendor === "string" && p.vendor) || (p.vendor?.businessName) ? (
+          <div className="cp-inline-card__vendor">
+            {typeof p.vendor === "string" ? p.vendor : (p.vendor?.businessName || "")}
+          </div>
+        ) : p.category ? (
           <div className="cp-inline-card__vendor" style={{ textTransform: "capitalize" }}>{p.category}</div>
-        )}
+        ) : null}
       </div>
       <div className="cp-inline-card__arrow">→</div>
     </div>
@@ -127,8 +135,7 @@ export default function ChatPage() {
   const [error, setError]           = useState("");
   const [input, setInput]           = useState("");
   const [selected, setSelected]     = useState(null);
-  const [cartCount, setCartCount]   = useState(0);
-  const [toastMsg, setToastMsg]     = useState("");
+  const [productFetchLoading, setProductFetchLoading] = useState(false);
   const [expanded, setExpanded]     = useState(false);
   const [historyLoading, setHistoryLoading] = useState(true);
   const messagesEndRef              = useRef(null);
@@ -152,7 +159,7 @@ export default function ChatPage() {
             suggestions: [],
           }]);
         }
-      } catch (err) {
+      } catch {
         // On history load failure, just show welcome message silently
         setMessages([{
           id: newId(),
@@ -203,7 +210,7 @@ export default function ChatPage() {
       } else {
         throw new Error("Unexpected response format");
       }
-    } catch (err) {
+    } catch {
       setMessages(prev => [
         ...prev,
         {
@@ -235,12 +242,6 @@ export default function ChatPage() {
     setError("");
   };
 
-  const addToCart = (product) => {
-    setCartCount(c => c + 1);
-    setToastMsg(`${product.name} added to cart`);
-    setTimeout(() => setToastMsg(""), 2500);
-  };
-
   const handleLogout = async () => {
     try {
       await logout();
@@ -250,6 +251,21 @@ export default function ChatPage() {
   };
 
   const isFirstLoad = messages.length <= 1;
+
+  const openProductFromChat = async (p) => {
+    const raw = p?._id ?? p?.id;
+    const idStr = raw != null ? String(raw) : "";
+    if (!idStr) return;
+    setProductFetchLoading(true);
+    try {
+      const full = await fetchProductById(idStr);
+      setSelected(full);
+    } catch {
+      setSelected(p);
+    } finally {
+      setProductFetchLoading(false);
+    }
+  };
 
   return (
     <div className="cp-root">
@@ -265,9 +281,8 @@ export default function ChatPage() {
           <button className="cp-logout-btn" onClick={handleLogout}>
             Logout
           </button>
-          <button className="cp-cart-btn" onClick={() => navigate("/checkout")}>
-            <IconCart />
-            {cartCount > 0 && <span className="cp-cart-badge">{cartCount}</span>}
+          <button type="button" className="cp-cart-btn" title="My orders" onClick={() => navigate("/orders")}>
+            <IconOrders />
           </button>
         </div>
       </header>
@@ -323,7 +338,7 @@ export default function ChatPage() {
                   {msg.from === "ai" && msg.products?.length > 0 && (
                     <div className="cp-msg__products">
                       {msg.products.slice(0, 4).map(p => (
-                        <ChatProduct key={p._id || p.id} p={p} onView={setSelected} />
+                        <ChatProduct key={p._id || p.id} p={p} onView={openProductFromChat} busy={productFetchLoading} />
                       ))}
                       {msg.products.length > 4 && (
                         <div className="cp-msg__more">+{msg.products.length - 4} more products found</div>
@@ -401,16 +416,12 @@ export default function ChatPage() {
         </div>
       </main>
 
-      {/* Toast */}
-      {toastMsg && <div className="cp-toast"><IconCart />{toastMsg}</div>}
+      {productFetchLoading && (
+        <div className="cp-toast cp-toast--subtle" role="status">Loading product details…</div>
+      )}
 
-      {/* Product Detail */}
-      <ProductDetailModal
-        product={selected}
-        onClose={() => setSelected(null)}
-        onAddToCart={(p) => { addToCart(p); setSelected(null); }}
-        onBuyNow={(p) => { addToCart(p); setSelected(null); navigate("/checkout"); }}
-      />
+      {/* Product detail + buy (order + payment redirect) */}
+      <ProductDetailModal product={selected} onClose={() => setSelected(null)} />
     </div>
   );
 }

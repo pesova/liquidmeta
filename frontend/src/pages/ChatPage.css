@@ -146,6 +146,7 @@ button { font-family:var(--font-body); cursor:pointer; }
 
 /* ── TOAST ── */
 .cp-toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:var(--bg-panel); border:1px solid var(--border-2); color:var(--text-1); padding:9px 16px; border-radius:9px; display:flex; align-items:center; gap:7px; font-size:.8rem; font-weight:500; box-shadow:0 8px 24px rgba(0,0,0,.4); z-index:200; white-space:nowrap; animation:toastIn .25s ease; }
+.cp-toast--subtle { z-index: 350; opacity: 0.95; }
 .cp-toast svg { width:14px; height:14px; color:var(--gold); }
 @keyframes toastIn { from{opacity:0;transform:translateX(-50%) translateY(10px)}to{opacity:1;transform:translateX(-50%) translateY(0)} }
 

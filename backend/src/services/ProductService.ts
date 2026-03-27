@@ -84,7 +84,7 @@ class ProductService {
   async getProductById(productId: string): Promise<IProduct | null> {
     return await Product.findById(productId)
       .select("-embedding")
-      .populate("vendor", "name email");
+      .populate("vendor", "businessName firstName lastName phoneNumber");
   }
 
   async bulkCreate(
