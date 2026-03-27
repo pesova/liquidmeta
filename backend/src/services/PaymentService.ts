@@ -25,19 +25,23 @@ class PaymentService {
       throw new Error(`Order is not awaiting payment — current status: ${order.status}`);
     }
 
-    // Interswitch expects amount as kobo (naira × 100)
     const amountKobo = Math.round(order.totalAmount * 100);
-
     const payBillResponse = await InterswitchProvider.createPaymentLink(
       amountKobo,
       buyerEmail
     );
-
-    // Store Interswitch's references on the order so the webhook can find it
+    // Store Interswitch references on order for webhook lookup
     order.interswitchRef = payBillResponse.reference;
     order.interswitchTransactionRef = payBillResponse.transactionReference;
     await order.save();
-
+    // Initiate escrow record with status INITIATED
+    await EscrowService.initiateEscrow({
+      orderId: order._id.toString(),
+      buyerId: buyerId,
+      vendorId: order.vendor.toString(),
+      amount: amountKobo,
+      interswitchRef: payBillResponse.transactionReference,
+    });
     return {
       paymentUrl:       payBillResponse.paymentUrl,
       interswitchRef:   payBillResponse.reference,
@@ -102,15 +106,9 @@ class PaymentService {
       return { success: false, message: 'Payment amount mismatch' };
     }
 
-    // Lock funds in escrow, move order to PAID_IN_ESCROW
-    await EscrowService.createForOrder({
-      orderId:             order._id.toString(),
-      buyerId:             order.buyer.toString(),
-      vendorId:            order.vendor.toString(),
-      amount:              amountKobo,
-      interswitchRef,
-      interswitchPaymentId: statusResult.paymentReference,
-    });
+    // Finalize escrow after successful verification
+    await EscrowService.finalizeEscrow(order._id.toString(), statusResult.paymentReference);
+
 
     console.log(`PaymentService: payment confirmed and escrowed for order ${order._id}`);
 

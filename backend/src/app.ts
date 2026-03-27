@@ -9,6 +9,7 @@ import productRoutes from './routes/product';
 import chatRoutes from './routes/chat';
 import orderRoutes from './routes/order';
 import paymentRoutes from './routes/payment';
+import adminRoutes from './routes/admin';
 
 connectDB();
 
@@ -30,6 +31,7 @@ app.use('/api/products', productRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/payments', paymentRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Test route
 app.get('/', (req: Request, res: Response) => {

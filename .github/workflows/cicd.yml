@@ -13,10 +13,10 @@ env:
   NODE_VERSION: '20'
 
 jobs:
-  # Job 1: Test & Build Backend
+  # Job 1: Test & Build Backend (CI only)
   build-backend:
     runs-on: ubuntu-latest
-    name: Build & Test Backend
+    name: Build & Lint Backend
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -42,17 +42,10 @@ jobs:
           cd backend
           npm run build
 
-      - name: Upload backend build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: backend-dist
-          path: backend/dist/
-          retention-days: 1
-
-  # Job 2: Test & Build Frontend
+  # Job 2: Test & Build Frontend (CI only)
   build-frontend:
     runs-on: ubuntu-latest
-    name: Build & Test Frontend
+    name: Build & Lint Frontend
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -78,37 +71,65 @@ jobs:
           cd frontend
           npm run build
 
-      - name: Upload frontend build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: frontend-dist
-          path: frontend/dist/
-          retention-days: 1
-
-  # Job 3: Deploy to EC2 (only on main branch push, not on PRs)
+  # Job 3: Deploy to EC2 (FULL artifact deploy, no install on server)
   deploy:
     needs: [build-backend, build-frontend]
     runs-on: ubuntu-latest
-    name: Deploy to EC2
+    name: Deploy Fully Built App to EC2
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Download backend artifacts
-        uses: actions/download-artifact@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          name: backend-dist
-          path: backend/dist/
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
 
-      - name: Download frontend artifacts
-        uses: actions/download-artifact@v4
+      # 🔧 Backend install + build (WITH node_modules)
+      - name: Install & Build Backend
+        run: |
+          cd backend
+          npm ci
+          npm run build
+
+      # 🔧 Frontend install + build
+      - name: Install & Build Frontend
+        run: |
+          cd frontend
+          npm ci
+          npm run build
+
+      # 📦 Prepare deployment package (INCLUDING node_modules)
+      - name: Create deployment package
+        run: |
+          mkdir deploy
+
+          # Backend (include node_modules + build)
+          cp -r backend deploy/backend
+
+          # Frontend (only dist needed)
+          mkdir -p deploy/frontend
+          cp -r frontend/dist deploy/frontend/
+
+          # PM2 config
+          cp ecosystem.config.js deploy/ || true
+
+      # 🚀 Upload everything
+      - name: Deploy via SSH
+        uses: easingthemes/ssh-deploy@main
         with:
-          name: frontend-dist
-          path: frontend/dist/
+          SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }}
+          REMOTE_HOST: ${{ secrets.EC2_HOST }}
+          REMOTE_USER: ${{ secrets.EC2_USER }}
+          TARGET: /home/ubuntu/ai-marketlink
+          SOURCE: "deploy/"
+          ARGS: "-rlgoDzvc"
 
-      - name: Deploy to EC2
+      # 🔄 Restart only (NO install, NO build)
+      - name: Restart services on EC2
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.EC2_HOST }}
@@ -117,41 +138,12 @@ jobs:
           port: ${{ secrets.EC2_PORT }}
           script: |
             cd /home/ubuntu/ai-marketlink
-            
-            # Pull latest code
-            git fetch origin
-            git reset --hard origin/main
-            
-            # Copy backend dist
-            if [ -d "backend/dist" ]; then
-              rm -rf backend/dist
-            fi
-            mkdir -p backend/dist
-            
-            # Copy frontend dist
-            if [ -d "frontend/dist" ]; then
-              rm -rf frontend/dist
-            fi
-            mkdir -p frontend/dist
-            
-            # Install root dependencies
-            npm install --production
-            
-            # Install backend dependencies (if package.json changed)
-            cd backend
-            npm install --production
-            cd ..
-            
-            # Install frontend dependencies (if package.json changed)
-            cd frontend
-            npm install --production
-            cd ..
-            
-            # Restart PM2 app
+
+            # Restart PM2 instantly
             pm2 restart marketlink-api --update-env || pm2 start ecosystem.config.js
             pm2 save
-            
-            # Reload Nginx (no downtime)
+
+            # Reload Nginx
             sudo nginx -s reload || sudo systemctl restart nginx
-            
-            echo "✓ Deployment completed successfully!"
+
+            echo "✓ Zero-install deployment completed!"

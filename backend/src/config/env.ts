@@ -36,6 +36,7 @@ interface EnvironmentConfig {
   CLOUDINARY_CLOUD_NAME: string;
   CLOUDINARY_API_KEY: string;
   CLOUDINARY_API_SECRET: string;
+  ADMIN_PASSWORD: string;
 }
 
 class EnvConfig {
@@ -116,6 +117,7 @@ class EnvConfig {
       CLOUDINARY_API_KEY: this.getString("CLOUDINARY_API_KEY", ""),
       CLOUDINARY_CLOUD_NAME: this.getString("CLOUDINARY_CLOUD_NAME", ""),
       OPENAI_API_KEY: this.getString("OPENAI_API_KEY", ""),
+      ADMIN_PASSWORD: this.getString("ADMIN_PASSWORD", ""),
     };
   }
 
@@ -221,6 +223,10 @@ class EnvConfig {
 
   get CLOUDINARY_API_KEY(): string {
     return this.config.CLOUDINARY_API_KEY;
+  }
+
+  get ADMIN_PASSWORD(): string {
+    return this.config.ADMIN_PASSWORD;
   }
 
   get CLOUDINARY_API_SECRET(): string {
