@@ -43,6 +43,17 @@ export const getAllOrders = async (req: Request, res: Response) => {
   }
 };
 
+export const getAllVendors = async (req: Request, res: Response) => {
+  try {
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 50;
+    const data = await AdminService.getAllVendors(page, limit);
+    res.status(200).json({ success: true, data });
+  } catch (error: any) {
+    throw error;
+  }
+};
+
 export const resolveDispute = async (req: Request, res: Response) => {
   try {
     const { orderId, action } = req.body as { orderId: string; action: string };
@@ -50,7 +61,8 @@ export const resolveDispute = async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, message: 'orderId and action are required' });
     }
     await AdminService.resolveDispute(orderId, action);
-    res.status(200).json({ success: true, message: `Escrow ${action}ed for order ${orderId}` });
+    const verb = action === 'release' ? 'Released' : 'Refunded';
+    res.status(200).json({ success: true, message: `${verb} escrow for order ${orderId}` });
   } catch (error: any) {
     throw error;
   }

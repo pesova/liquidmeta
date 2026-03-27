@@ -154,7 +154,7 @@ class EscrowService {
 
   public async releaseForOrder(orderId: string): Promise<void> {
     const escrow = await EscrowTransaction.findOne({
-      orderId: new Types.ObjectId(orderId),
+      order: new Types.ObjectId(orderId),
       status: EscrowStatus.HOLDING,
     });
 
@@ -176,7 +176,7 @@ class EscrowService {
 
   public async refundForOrder(orderId: string): Promise<void> {
     const escrow = await EscrowTransaction.findOne({
-      orderId: new Types.ObjectId(orderId),
+      order: new Types.ObjectId(orderId),
       status: EscrowStatus.HOLDING,
     });
 
@@ -206,7 +206,7 @@ class EscrowService {
     const result = await EscrowTransaction.aggregate([
       {
         $match: {
-          vendorId: new Types.ObjectId(vendorId),
+          vendor: new Types.ObjectId(vendorId),
           status: EscrowStatus.HOLDING,
         },
       },
@@ -230,7 +230,7 @@ class EscrowService {
     const result = await EscrowTransaction.aggregate([
       {
         $match: {
-          vendorId: new Types.ObjectId(vendorId),
+          vendor: new Types.ObjectId(vendorId),
           status: EscrowStatus.RELEASED,
         },
       },

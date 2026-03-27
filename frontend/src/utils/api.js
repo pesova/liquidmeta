@@ -129,16 +129,20 @@ export const chatAPI = {
 };
 
 // ════════════════════════════════════════
-// ADMIN
+// ADMIN (requires JWT + admin role)
 // ════════════════════════════════════════
 export const adminAPI = {
-  getStats:       () => request("GET",  "/api/admin/stats"),
-  getVendors:     () => request("GET",  "/api/admin/vendors"),
-  verifyVendor:   (id) => request("PATCH", `/api/admin/vendors/${id}/verify`),
-  suspendVendor:  (id) => request("PATCH", `/api/admin/vendors/${id}/status`),
-  getTransactions:() => request("GET",  "/api/admin/transactions"),
-  getDisputes:    () => request("GET",  "/api/admin/disputes"),
-  resolveDispute: (id, body) => request("POST", `/api/admin/disputes/${id}/resolve`, body),
-  releaseFunds:   (id) => request("POST", `/api/admin/escrow/${id}/release`),
-  updateBalance:  (id, body) => request("PATCH", `/api/admin/transactions/${id}/balance`, body),
+  /** EscrowTransaction docs, populated order / buyer / vendor */
+  getEscrows: () => request("GET", "/api/admin/escrows"),
+  getUsers: (page = 1, limit = 50) =>
+    request("GET", `/api/admin/users?page=${page}&limit=${limit}`),
+  getOrders: (page = 1, limit = 100) =>
+    request("GET", `/api/admin/orders?page=${page}&limit=${limit}`),
+  getVendors: (page = 1, limit = 100) =>
+    request("GET", `/api/admin/vendors?page=${page}&limit=${limit}`),
+  getVendorBalances: (vendorId) =>
+    request("GET", `/api/admin/vendor/${encodeURIComponent(vendorId)}/balances`),
+  /** Body: { orderId, action } action is 'release' | 'refund' */
+  resolveDispute: (orderId, action) =>
+    request("POST", "/api/admin/dispute", { orderId, action }),
 };

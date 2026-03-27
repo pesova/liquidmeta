@@ -14,7 +14,7 @@ const Checkout = lazy(() => import('../pages/CheckoutPage.jsx'));
 const Orders = lazy(() => import('../pages/Orders.jsx'));
 const VendorDashboard = lazy(() => import('../pages/VendorDashboard.jsx'));
 const VendorProfile = lazy(() => import('../pages/VendorProfile.jsx'));
-const AdminPanel = lazy(() => import('../pages/Adminpanel.jsx'));
+const AdminPanel = lazy(() => import('../pages/AdminPanel.jsx'));
 
 const RootRoute = () => {
   const { user, loading } = useContext(AuthContext);
