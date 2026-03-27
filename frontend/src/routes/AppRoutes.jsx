@@ -10,8 +10,6 @@ import { AuthContext } from '../context/AuthContext';
 
 // Lazy load pages for code splitting
 const Chat = lazy(() => import('../pages/ChatPage.jsx'));
-const ProductList = lazy(() => import('../pages/ProductList.jsx'));
-const ProductDetail = lazy(() => import('../pages/ProductDetail.jsx'));
 const Checkout = lazy(() => import('../pages/CheckoutPage.jsx'));
 const Orders = lazy(() => import('../pages/Orders.jsx'));
 const VendorDashboard = lazy(() => import('../pages/VendorDashboard.jsx'));
@@ -39,12 +37,8 @@ export const AppRoutes = () => (
         {/* Protected routes (any authenticated user) */}
         <Route element={<ProtectedRoute />}>
           <Route path="/chat" element={<Chat />}></Route>
-          <Route path="/products" element={<ProductList />}></Route>
-          <Route path="/products/:id" element={<ProductDetail />}></Route>
           <Route path="/checkout" element={<Checkout />}></Route>
           <Route path="/orders" element={<Orders />}></Route>
-          {/* <Route path="/checkout" element={<CheckoutPage />} /> */}
-
         </Route>
 
         {/* Vendor only routes */}

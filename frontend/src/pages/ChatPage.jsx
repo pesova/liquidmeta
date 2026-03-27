@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import "./ChatPage.css";
 import ProductDetailModal from "./ProductDetailModal";
-import { sendChatMessage, getHistory } from "../services/chatService";
+import { sendChatMessage, getHistory, clearHistory } from "../services/chatService";
 import { AuthContext } from "../context/AuthContext";
 import { fetchProductById } from "../services/productService";
 
@@ -147,7 +147,8 @@ export default function ChatPage() {
       try {
         const res = await getHistory();
         if (res?.success && res?.data?.messages?.length > 0) {
-          const builtMessages = buildMessagesFromHistory(res.data.messages);
+          const last50 = res.data.messages.slice(-50);
+          const builtMessages = buildMessagesFromHistory(last50);
           setMessages(builtMessages);
         } else {
           // No history — show welcome message
@@ -231,15 +232,20 @@ export default function ChatPage() {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }
   };
 
-  const clearChat = () => {
-    setMessages([{
-      id: newId(),
-      from: "ai",
-      text: "👋 Hi! I'm MarketLink AI. Tell me what you're looking for and I'll find the best products for you.",
-      products: [],
-      suggestions: [],
-    }]);
+  const clearChat = async () => {
     setError("");
+    try {
+      await clearHistory();
+      setMessages([{
+        id: newId(),
+        from: "ai",
+        text: "👋 Hi! I'm MarketLink AI. Tell me what you're looking for and I'll find the best products for you.",
+        products: [],
+        suggestions: [],
+      }]);
+    } catch {
+      setError("Could not clear chat. Please try again.");
+    }
   };
 
   const handleLogout = async () => {
@@ -401,7 +407,6 @@ export default function ChatPage() {
               placeholder="Type your message..."
               disabled={isTyping || historyLoading}
             />
-            <button className="cp-input-btn" title="Voice"><IconMic /></button>
             <button
               className={`cp-send-btn${input.trim() && !isTyping ? " active" : ""}`}
               onClick={handleSend}
