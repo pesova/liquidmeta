@@ -10,7 +10,7 @@ import { ChatHistory } from "../models/ChatHistory";
 import { ChatSession, IChatSession } from "../models/ChatSession";
 import VectorService from "../infrastructure/vector/VectorService";
 
-const SUMMARY_THRESHOLD = 5;
+const SUMMARY_THRESHOLD = 10;
 
 const llm = new ChatOpenAI({
   apiKey: env.OPENAI_API_KEY,
@@ -38,12 +38,25 @@ class ChatService {
       const ONE_DAY_MS = 24 * 60 * 60 * 1000;
       if (ageMs > ONE_DAY_MS) {
         await this.archiveSession(session);
-        session = await ChatSession.create({ userId, messages: [], summary: null });
+        session = await ChatSession.create({
+          userId,
+          messages: [],
+          summary: null,
+        });
       } else {
-        console.log('Found existing ChatSession for user', userId.toString(), 'Message count:', session.messages.length);
+        console.log(
+          "Found existing ChatSession for user",
+          userId.toString(),
+          "Message count:",
+          session.messages.length,
+        );
       }
     } else {
-      session = await ChatSession.create({ userId, messages: [], summary: null });
+      session = await ChatSession.create({
+        userId,
+        messages: [],
+        summary: null,
+      });
     }
     return session;
   }
@@ -74,7 +87,7 @@ class ChatService {
     return session;
   }
 
-    /** Archive old session messages into ChatHistory */
+  /** Archive old session messages into ChatHistory */
   private async archiveSession(session: IChatSession): Promise<void> {
     const { userId, messages } = session;
     const toStore = [...messages]; // only user and assistant messages
@@ -88,7 +101,18 @@ class ChatService {
 
   // Simple intent detection for purchase queries
   private isPurchaseIntent(message: string): boolean {
-    const keywords = ['buy', 'purchase', 'order', 'price', 'cost', 'how much', 'want', 'need', 'looking for', 'show me'];
+    const keywords = [
+      "buy",
+      "purchase",
+      "order",
+      "price",
+      "cost",
+      "how much",
+      "want",
+      "need",
+      "looking for",
+      "show me",
+    ];
     const lower = message.toLowerCase();
     return keywords.some((kw) => lower.includes(kw));
   }
@@ -105,7 +129,7 @@ class ChatService {
     // Determine if the user is asking about a product
     const intent = this.isPurchaseIntent(userMessage);
     let products: any[] = [];
-    let productContext = '';
+    let productContext = "";
     if (intent) {
       // Retrieve product context via vector search
       products = await VectorService.searchProducts(userMessage, 5);
@@ -116,21 +140,37 @@ class ChatService {
                 (p: any, i: number) =>
                   `${i + 1}. ${p.name} — ₦${p.price} — ${p.category} — ${p.description}`,
               )
-              .join('\n')
-          : 'No matching products found.';
-      console.log('Product context prepared.');
+              .join("\n")
+          : "No matching products found.";
+      console.log("Product context prepared.");
     }
 
     // Build system message
     const systemParts = [];
     systemParts.push(
-      `You are AI MarketLink's friendly Nigerian marketplace shopping assistant.
+      `You are AI MarketLink's friendly shopping assistant.
+
+        Your primary goal is to help users discover and buy products easily.
+
+        CORE BEHAVIOR:
+        - You can answer general questions and engage in normal conversation.
+        - ALWAYS answer the user's question clearly and helpfully first, no matter the topic.
+        - However, you should naturally guide the conversation back to helping the user find, compare, or buy products — but ONLY when it feels relevant or not forced..
 
         CRITICAL RULES — follow these strictly:
         1. You ALWAYS have access to real product listings. NEVER say products are unavailable, out of stock, or not found unless the Product Context below explicitly contains "No matching products found."
-        2. When products are listed in the Product Context, present them enthusiastically to the buyer with name, price, and a short description.
+        2. When products are listed in the Product Context, present them enthusiastically with name, price, and a short description.
         3. Do NOT make up products. Only reference what is in the Product Context.
-        4. Keep tone conversational, warm, and helpful — like a knowledgeable Nigerian market vendor.`,
+        4. If the user asks something unrelated (e.g. jokes, life advice, random topics), respond briefly but then smoothly steer the conversation back to shopping or ask if they are looking for any product.
+        5. Keep tone conversational, warm, and helpful — like a smart, friendly Nigerian market vendor.
+        6. Avoid long off-topic discussions. Keep non-shopping responses short and redirect.
+
+        EXAMPLES OF REDIRECTION:
+        - "Haha, that's funny 😄 By the way, are you looking for anything to buy today?"
+        - "I can help with that! Also, if you need any products, I can find the best options for you."
+        - "Nice question! While you're here, I can also help you get great deals on anything you need."
+
+        Remember: You are not just a chatbot — you are a shopping assistant focused on helping users find products.`,
     );
 
     if (session.summary) {
@@ -144,19 +184,18 @@ class ChatService {
       );
     }
     const systemMessage = new SystemMessage(systemParts.join("\n\n"));
-    console.log({ systemMessage });
-
     const priorMessages = session.messages.map((msg) =>
       msg.role === "user"
         ? new HumanMessage(msg.content)
         : new AIMessage(msg.content),
     );
+    console.log('\n\n\n   ', systemMessage, '\n\n\n');
+    
 
     const userHuman = new HumanMessage(userMessage);
     const llmMessages = [systemMessage, ...priorMessages, userHuman];
 
     const assistantResponse = await llm.invoke(llmMessages);
-    console.log("LLM response received:", (assistantResponse as any).content);
 
     // Store both user and assistant messages
     const now = new Date();
@@ -170,15 +209,24 @@ class ChatService {
       content: (assistantResponse as any).content,
       createdAt: now,
     });
-    console.log("Saved user and assistant messages to session");
     await session.save();
     // Also persist to ChatHistory
     await ChatHistory.updateOne(
       { userId: objId },
-      { $push: { messages: { $each: [
-        { role: 'user', content: userMessage, createdAt: now },
-        { role: 'assistant', content: (assistantResponse as any).content, createdAt: now },
-      ] } } },
+      {
+        $push: {
+          messages: {
+            $each: [
+              { role: "user", content: userMessage, createdAt: now },
+              {
+                role: "assistant",
+                content: (assistantResponse as any).content,
+                createdAt: now,
+              },
+            ],
+          },
+        },
+      },
       { upsert: true },
     );
 
@@ -196,7 +244,10 @@ class ChatService {
     if (!session) {
       return { messages: pastMessages, summary: null };
     }
-    return { messages: [...pastMessages, ...session.messages], summary: session.summary };
+    return {
+      messages: [...pastMessages, ...session.messages],
+      summary: session.summary,
+    };
   }
 
   /** Clear chat history */

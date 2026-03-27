@@ -1,7 +1,6 @@
 import express, { Request, Response } from 'express';
 import env from './config/env';
 import cors from 'cors';
-import connectDB from './config/database';
 import authRoutes from './routes/auth';
 import vendorRoutes from './routes/vendor';
 import { errorHandler } from './utils/errorHandler';
@@ -13,7 +12,6 @@ import adminRoutes from './routes/admin';
 import whatsappRoutes from './integrations/whatsapp/routes/whatsapp.routes';
 import rawWebhookRoutes from './routes/rawWebhook';
 
-connectDB();
 
 const app = express();
 
