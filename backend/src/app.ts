@@ -1,7 +1,6 @@
 import express, { Request, Response } from 'express';
 import env from './config/env';
 import cors from 'cors';
-import connectDB from './config/database';
 import authRoutes from './routes/auth';
 import vendorRoutes from './routes/vendor';
 import { errorHandler } from './utils/errorHandler';
@@ -10,8 +9,9 @@ import chatRoutes from './routes/chat';
 import orderRoutes from './routes/order';
 import paymentRoutes from './routes/payment';
 import adminRoutes from './routes/admin';
+import whatsappRoutes from './integrations/whatsapp/routes/whatsapp.routes';
+import webhookRoutes from './routes/webhook';
 
-connectDB();
 
 const app = express();
 
@@ -19,9 +19,12 @@ app.use(cors({
   origin: '*',
   credentials: true
 }));
+// Parse raw body for WhatsApp webhook (required for HMAC verification)
+// app.use('/api/whatsapp', express.raw({ type: 'application/json' }));
 app.use(express.json());
 
 // API Routes
+app.use('/webhook', webhookRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/vendors', vendorRoutes);
 app.use('/api/products', productRoutes);
@@ -29,6 +32,7 @@ app.use('/api/chat', chatRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/whatsapp', whatsappRoutes);
 
 // Test route
 app.get('/', (req: Request, res: Response) => {
