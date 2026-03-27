@@ -78,11 +78,12 @@ class PaymentService {
     }
 
     const amountKobo = Math.round(order.totalAmount * 100);
+    const verifyRef = order.interswitchTransactionRef || interswitchRef;
 
     // Re-verify with Interswitch — never trust the redirect params alone
     let statusResult;
     try {
-      statusResult = await InterswitchProvider.verifyTransaction(interswitchRef, amountKobo);
+      statusResult = await InterswitchProvider.verifyTransaction(verifyRef, amountKobo);
     } catch (err: any) {
       console.error(`PaymentService: verification failed for ${interswitchRef}:`, err.message);
       return { success: false, message: 'Could not verify transaction with Interswitch' };
@@ -106,8 +107,8 @@ class PaymentService {
       return { success: false, message: 'Payment amount mismatch' };
     }
 
-    // Finalize escrow after successful verification
-    await EscrowService.finalizeEscrow(order._id.toString(), statusResult.paymentReference);
+    // Finalize escrow after successful verification (lookup key is Interswitch txn ref, not Mongo order id)
+    await EscrowService.resolveAndFinalize(verifyRef, statusResult.paymentReference);
 
     return {
       success:       true,

@@ -90,6 +90,12 @@ export const markVendorOrderShipped = async (orderId) => {
   return unwrap(res);
 };
 
+/** PATCH /orders/:orderId/delivered */
+export const markVendorOrderDelivered = async (orderId) => {
+  const res = await apiClient.patch(`/orders/${orderId}/delivered`);
+  return unwrap(res);
+};
+
 /** PATCH /vendors/bank-details */
 export const updateVendorBankDetails = async (payload) => {
   const res = await apiClient.patch('/vendors/bank-details', payload);

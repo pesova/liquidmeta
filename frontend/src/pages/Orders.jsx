@@ -1,7 +1,7 @@
 // src/pages/Orders.jsx
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { fetchUserOrders } from '../services/orderService';
+import { fetchUserOrders, confirmBuyerDelivery } from '../services/orderService';
 import { initiatePayment } from '../services/paymentService';
 import { openPaymentInNewTab } from '../utils/openPaymentLink';
 import { LoadingSpinner } from '../components/LoadingSpinner';
@@ -71,7 +71,7 @@ function formatOrderedAt(iso) {
   }
 }
 
-function OrderCard({ order, payingId, paymentLinks, onPay }) {
+function OrderCard({ order, payingId, paymentLinks, confirmingId, onPay, onConfirmDelivery }) {
   const product = order.product || {};
   const vendor = order.vendor || {};
   const status = STATUS_META[order.status] || {
@@ -80,6 +80,8 @@ function OrderCard({ order, payingId, paymentLinks, onPay }) {
   };
   const vendorName = vendor.businessName || 'Vendor';
   const isPendingPay = order.status === 'PENDING_PAYMENT';
+  const canConfirmReceipt =
+    order.status === 'DELIVERED_PENDING_CONFIRMATION' || order.status === 'SHIPPED';
   const orderKey = String(order._id ?? '');
   const payUrl = paymentLinks[orderKey];
   const paying = payingId === orderKey;
@@ -160,6 +162,24 @@ function OrderCard({ order, payingId, paymentLinks, onPay }) {
             ) : null}
           </div>
         ) : null}
+        {canConfirmReceipt ? (
+          <div className="ord-pay-row">
+            <button
+              type="button"
+              className="ord-pay-btn ord-pay-btn--confirm"
+              disabled={confirmingId === orderKey}
+              onClick={() => onConfirmDelivery(order)}
+            >
+              {confirmingId === orderKey ? 'Confirming…' : 'Confirm delivery — release escrow'}
+            </button>
+            {order.status === 'SHIPPED' ? (
+              <p className="ord-pay-fallback" style={{ marginTop: 8 }}>
+                You can confirm as soon as you receive the package. If the vendor marked it delivered, funds release
+                after you confirm.
+              </p>
+            ) : null}
+          </div>
+        ) : null}
       </div>
     </article>
   );
@@ -172,6 +192,7 @@ export const Orders = () => {
   const [loadError, setLoadError] = useState('');
   const [payError, setPayError] = useState('');
   const [payingId, setPayingId] = useState(null);
+  const [confirmingId, setConfirmingId] = useState(null);
   const [paymentLinks, setPaymentLinks] = useState({});
 
   const loadOrders = useCallback(async () => {
@@ -193,6 +214,22 @@ export const Orders = () => {
   useEffect(() => {
     loadOrders();
   }, [loadOrders]);
+
+  const handleConfirmDelivery = async (order) => {
+    const id = order?._id != null ? String(order._id) : '';
+    if (!id) return;
+    setConfirmingId(id);
+    setPayError('');
+    try {
+      await confirmBuyerDelivery(id);
+      await loadOrders();
+    } catch (err) {
+      console.error(err);
+      setPayError(err.response?.data?.message || err.message || 'Could not confirm delivery.');
+    } finally {
+      setConfirmingId(null);
+    }
+  };
 
   const handlePay = async (order) => {
     const id = order?._id != null ? String(order._id) : '';
@@ -280,8 +317,10 @@ export const Orders = () => {
                 key={order._id}
                 order={order}
                 payingId={payingId}
+                confirmingId={confirmingId}
                 paymentLinks={paymentLinks}
                 onPay={handlePay}
+                onConfirmDelivery={handleConfirmDelivery}
               />
             ))}
           </div>

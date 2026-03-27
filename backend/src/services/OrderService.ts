@@ -76,6 +76,24 @@ class OrderService {
   }
 
   /**
+   * Vendor confirms the item reached the buyer — order waits for buyer confirmation (or auto-release).
+   */
+  public async markDelivered(orderId: string, vendorId: string) {
+    const order = await Order.findById(orderId);
+    if (!order) throw new Error('Order not found');
+    if (order.vendor.toString() !== vendorId) throw new Error('Unauthorised');
+    if (order.status !== OrderStatus.SHIPPED) {
+      throw new Error(`Cannot mark as delivered — current status is ${order.status}`);
+    }
+
+    order.status = OrderStatus.DELIVERED_PENDING_CONFIRMATION;
+    order.deliveredAt = new Date();
+    order.pendingBuyerConfirmationAt = new Date();
+    await order.save();
+    return order;
+  }
+
+  /**
    * Buyer confirms delivery.
    * Triggers escrow release → order moves to COMPLETED.
    */
@@ -83,7 +101,10 @@ class OrderService {
     const order = await Order.findById(orderId);
     if (!order) throw new Error('Order not found');
     if (order.buyer.toString() !== buyerId) throw new Error('Unauthorised');
-    if (order.status !== OrderStatus.SHIPPED) {
+    const canConfirm =
+      order.status === OrderStatus.DELIVERED_PENDING_CONFIRMATION ||
+      order.status === OrderStatus.SHIPPED;
+    if (!canConfirm) {
       throw new Error(`Cannot confirm delivery — current status is ${order.status}`);
     }
 
@@ -99,9 +120,21 @@ class OrderService {
 
     if (role === 'buyer') {
       if (order.buyer.toString() !== requestingUserId) throw new Error('Unauthorised');
-      if (order.status !== OrderStatus.PENDING_PAYMENT) {
-        throw new Error('Buyers can only cancel orders that are pending payment');
+      if (order.status === OrderStatus.PENDING_PAYMENT) {
+        await EscrowService.voidInitiatedForOrder(orderId);
+      } else if (order.status === OrderStatus.PAID_IN_ESCROW) {
+        await EscrowService.refundForOrder(orderId);
+      } else {
+        throw new Error(
+          'Order cannot be cancelled at this stage. Contact support if you need help.',
+        );
       }
+    } else {
+      if (order.vendor.toString() !== requestingUserId) throw new Error('Unauthorised');
+      if (order.status !== OrderStatus.PENDING_PAYMENT) {
+        throw new Error('Vendors can only cancel orders that are still awaiting payment');
+      }
+      await EscrowService.voidInitiatedForOrder(orderId);
     }
 
     order.status = OrderStatus.CANCELLED;

@@ -21,7 +21,13 @@ const RootRoute = () => {
   if (loading) return <LoadingSpinner />;
 
   if (user) {
-    return <Navigate to={user.role === "vendor" ? "/vendor/dashboard" : "/chat"} replace />;
+    if (user.role === "vendor") {
+      return <Navigate to="/vendor/dashboard" replace />;
+    }
+    if (user.role === "admin") {
+      return <Navigate to="/admin" replace />;
+    }
+    return <Navigate to="/chat" replace />;
   }
 
   return <LandingPage />;
@@ -41,10 +47,12 @@ export const AppRoutes = () => (
           <Route path="/orders" element={<Orders />}></Route>
         </Route>
 
-        {/* Vendor only routes */}
         <Route element={<RoleBasedRoute allowedRoles={["vendor", "admin"]} />}>
           <Route path="/vendor/dashboard" element={<VendorDashboard />}></Route>
           <Route path="/vendor/profile" element={<VendorProfile />} />
+        </Route>
+
+        <Route element={<RoleBasedRoute allowedRoles={["admin"]} />}>
           <Route path="/admin" element={<AdminPanel />} />
         </Route>
       </Routes>

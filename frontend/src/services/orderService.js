@@ -40,3 +40,8 @@ export const markOrderShipped = async (orderId) => {
   const response = await apiClient.patch(`/orders/${orderId}/ship`);
   return response.data;
 };
+
+export const confirmBuyerDelivery = async (orderId) => {
+  const response = await apiClient.patch(`/orders/${orderId}/confirm-delivery`);
+  return response.data;
+};

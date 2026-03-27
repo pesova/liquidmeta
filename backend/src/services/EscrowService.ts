@@ -1,6 +1,7 @@
 import { Types } from "mongoose";
 import { EscrowTransaction, EscrowStatus } from "../models/EscrowTransaction";
 import { Order, OrderStatus } from "../models/Order";
+import env from "../config/env";
 import NotificationService from "./NotificationService";
 import { NotificationCategoryEnum } from "../interfaces/INotification";
 import { IVendor } from "../models";
@@ -135,20 +136,89 @@ class EscrowService {
       })
       .sendBoth();
 
-    await NotificationService.setTo({
-      userId: order.vendor._id,
-      email: typedOrder.vendor?.user?.email,
-    })
-      .setSubject("New Order Ready for Shipment")
-      .setMessage(
-        `You have received payment for order ${order._id}. Please proceed to ship the product.`,
-      )
-      .setCategory(NotificationCategoryEnum.TRANSACTION)
-      .setDetails({
-        orderId: order._id,
-        product: order.product,
+    const vendorUserId = typedOrder.vendor?.user?._id;
+    const vendorEmail = typedOrder.vendor?.user?.email;
+    if (vendorUserId) {
+      await NotificationService.setTo({
+        userId: vendorUserId,
+        email: vendorEmail,
       })
-      .sendBoth();
+        .setSubject("New Order Ready for Shipment")
+        .setMessage(
+          `You have received payment for order ${order._id}. Please proceed to ship the product.`,
+        )
+        .setCategory(NotificationCategoryEnum.TRANSACTION)
+        .setDetails({
+          orderId: order._id,
+          product: order.product,
+        })
+        .sendBoth();
+    }
+  }
+
+  /**
+   * Finalize escrow when the gateway reference may be either pay-bill `reference`
+   * or `transactionReference` (stored on the escrow row).
+   */
+  public async resolveAndFinalize(
+    referenceFromGateway: string,
+    interswitchPaymentId?: string,
+  ): Promise<void> {
+    const direct = await EscrowTransaction.findOne({
+      interswitchRef: referenceFromGateway,
+      status: EscrowStatus.INITIATED,
+    });
+    if (direct) {
+      await this.finalizeEscrow(referenceFromGateway, interswitchPaymentId);
+      return;
+    }
+    const order = await Order.findOne({
+      $or: [
+        { interswitchRef: referenceFromGateway },
+        { interswitchTransactionRef: referenceFromGateway },
+      ],
+    });
+    const resolved =
+      order?.interswitchTransactionRef || order?.interswitchRef;
+    if (!resolved) {
+      return;
+    }
+    await this.finalizeEscrow(resolved, interswitchPaymentId);
+  }
+
+  /** Remove INITIATED ledger rows when the buyer cancels before completing payment. */
+  public async voidInitiatedForOrder(orderId: string): Promise<void> {
+    await EscrowTransaction.deleteMany({
+      order: new Types.ObjectId(orderId),
+      status: EscrowStatus.INITIATED,
+    });
+  }
+
+  /**
+   * Auto-release escrow for orders stuck in DELIVERED_PENDING_CONFIRMATION
+   * past ESCROW_AUTO_RELEASE_DAYS (buyer never confirmed).
+   */
+  public async autoReleaseStalePendingBuyerConfirmation(): Promise<number> {
+    const days = env.ESCROW_AUTO_RELEASE_DAYS;
+    const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+    const stale = await Order.find({
+      status: OrderStatus.DELIVERED_PENDING_CONFIRMATION,
+      pendingBuyerConfirmationAt: { $exists: true, $lte: cutoff },
+    });
+    let count = 0;
+    for (const o of stale) {
+      try {
+        await this.releaseForOrder(o._id.toString());
+        count++;
+      } catch (err) {
+        console.error(
+          "[escrow] auto-release failed for order",
+          o._id.toString(),
+          err,
+        );
+      }
+    }
+    return count;
   }
 
   public async releaseForOrder(orderId: string): Promise<void> {

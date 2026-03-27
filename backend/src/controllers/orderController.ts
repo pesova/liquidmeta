@@ -90,6 +90,25 @@ export const markShipped = async (req: Request, res: Response) => {
   }
 };
 
+export const markDelivered = async (req: Request, res: Response) => {
+  try {
+    const vendor = (req as any).vendor;
+
+    const order = await OrderService.markDelivered(
+      req.params.orderId as string,
+      vendor._id.toString()
+    );
+
+    res.status(200).json({
+      success: true,
+      message: 'Order marked as delivered — awaiting buyer confirmation',
+      data: order,
+    });
+  } catch (error: any) {
+    throw error
+  }
+};
+
 export const confirmDelivery = async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
@@ -98,8 +117,6 @@ export const confirmDelivery = async (req: Request, res: Response) => {
       req.params.orderId as string,
       user._id.toString()
     );
-    // TODO: Release funds to vendor
-    // notify vendor of delivery
 
     res.status(200).json({
       success: true,

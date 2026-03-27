@@ -98,6 +98,33 @@ class ChatService {
     );
   }
 
+  /**
+   * MVP: structured filters for backend ranking (§7) — best-effort JSON from the user message.
+   */
+  private async extractPurchaseFilters(userMessage: string): Promise<{
+    product?: string | null;
+    max_price?: number | null;
+    color?: string | null;
+    category?: string | null;
+    location?: string | null;
+  } | null> {
+    try {
+      const r = await summaryLlm.invoke([
+        new SystemMessage(
+          `You extract shopping search filters for a Nigerian marketplace. Respond with ONLY a JSON object, no markdown, keys:
+{"product": string or null, "max_price": number or null, "color": string or null, "category": string or null, "location": string or null}
+max_price is in Nigerian Naira (numeric). Use null when unknown.`,
+        ),
+        new HumanMessage(userMessage),
+      ]);
+      const text = String((r as any).content ?? "").trim();
+      const cleaned = text.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/,"");
+      return JSON.parse(cleaned);
+    } catch {
+      return null;
+    }
+  }
+
   // Simple intent detection for purchase queries
   private isPurchaseIntent(message: string): boolean {
     const keywords = [
@@ -130,8 +157,31 @@ class ChatService {
     let products: any[] = [];
     let productContext = "";
     if (intent) {
-      // Retrieve product context via vector search
-      products = await VectorService.searchProducts(userMessage, 5);
+      const filters = await this.extractPurchaseFilters(userMessage);
+      const searchText = [
+        filters?.product,
+        filters?.color,
+        filters?.category,
+        filters?.location,
+        userMessage,
+      ]
+        .filter(Boolean)
+        .join(" ");
+      products = await VectorService.searchProducts(searchText, 8);
+      if (filters?.max_price != null && typeof filters.max_price === "number") {
+        products = products.filter((p: any) => Number(p.price) <= filters.max_price!);
+      }
+      if (
+        filters?.color &&
+        typeof filters.color === "string" &&
+        filters.color.length > 1
+      ) {
+        const c = filters.color.toLowerCase();
+        products = products.filter((p: any) => {
+          const blob = `${p.name ?? ""} ${p.description ?? ""}`.toLowerCase();
+          return blob.includes(c);
+        });
+      }
       productContext =
         products && products.length > 0
           ? products

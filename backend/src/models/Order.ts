@@ -22,6 +22,8 @@ export interface IOrder extends Document {
   interswitchRef?: string;
   interswitchTransactionRef?: string;
   shippedAt?: Date;
+  /** Set when the order enters DELIVERED_PENDING_CONFIRMATION (buyer confirmation window / auto-release clock). */
+  pendingBuyerConfirmationAt?: Date;
   deliveredAt?: Date;
   completedAt?: Date;
   cancelledAt?: Date;
@@ -69,6 +71,10 @@ const orderSchema = new Schema<IOrder>(
       required: true,
     },
     shippedAt: {
+      type: Date,
+      required: false,
+    },
+    pendingBuyerConfirmationAt: {
       type: Date,
       required: false,
     },

@@ -339,8 +339,9 @@ async function showVendorMenu(phone: string, session: WhatsAppSession) {
       `Reply with a number:\n\n` +
       `*1.* 📋 View my orders\n` +
       `*2.* 🚚 Mark order as shipped\n` +
-      `*3.* 💰 View my balance\n` +
-      `*4.* 🛍️ Switch to buyer mode\n\n` +
+      `*3.* 📬 Mark order as delivered\n` +
+      `*4.* 💰 View my balance\n` +
+      `*5.* 🛍️ Switch to buyer mode\n\n` +
       `_Reply *cancel* to exit menu_`,
   );
 }
@@ -350,6 +351,11 @@ async function handleVendorAction(
   session: WhatsAppSession,
   text: string,
 ) {
+  if (session.step === "VENDOR_AWAITING_DELIVERED_ID") {
+    await handleMarkDelivered(phone, session, text);
+    return;
+  }
+
   // Sub-step: awaiting order ID to ship
   if (session.step === "VENDOR_AWAITING_SHIP_ID") {
     await handleMarkShipped(phone, session, text);
@@ -384,13 +390,20 @@ async function handleVendorAction(
       `🚚 Enter the *Order ID* to mark as shipped:\n\n_Reply *cancel* to go back_`,
     );
   } else if (choice === "3") {
+    session.step = "VENDOR_AWAITING_DELIVERED_ID";
+    await saveSession(session);
+    await sendTextMessage(
+      phone,
+      `📬 Enter the *Order ID* to mark as *delivered* (buyer confirms next):\n\n_Reply *cancel* to go back_`,
+    );
+  } else if (choice === "4") {
     // View balance
     const vendor = (await Vendor.findById(session.vendorId).lean()) as any;
     if (vendor) {
       await sendTextMessage(phone, formatVendorBalance(vendor.balance));
     }
     await showVendorMenu(phone, session);
-  } else if (choice === "4") {
+  } else if (choice === "5") {
     // Switch to buyer mode
     await clearPendingAction(phone);
     session.step = "AWAITING_INTENT";
@@ -402,7 +415,7 @@ async function handleVendorAction(
   } else {
     await sendTextMessage(
       phone,
-      `Please reply with *1*, *2*, *3*, or *4*.\n\n_Reply *cancel* to exit._`,
+      `Please reply with *1*–*5*.\n\n_Reply *cancel* to exit._`,
     );
   }
 }
@@ -420,7 +433,7 @@ async function handleMarkShipped(
 
     await sendTextMessage(
       phone,
-      `✅ Order *#${orderId.slice(-6)}* marked as shipped!\n\nThe buyer has been notified.`,
+      `✅ Order *#${orderId.slice(-6)}* marked as shipped!\n\nWhen the buyer receives it, use *Vendor menu → 3* to mark delivered (starts confirmation / auto-release window).`,
     );
     await showVendorMenu(phone, session);
   } catch (err: any) {
@@ -428,6 +441,31 @@ async function handleMarkShipped(
     await sendTextMessage(
       phone,
       `❌ ${err?.message || "Could not update order. Check the Order ID and try again."}`,
+    );
+  }
+}
+
+async function handleMarkDelivered(
+  phone: string,
+  session: WhatsAppSession,
+  orderId: string,
+) {
+  try {
+    await OrderService.markDelivered(orderId.trim(), session.vendorId!);
+
+    session.step = "VENDOR_MENU";
+    await saveSession(session);
+
+    await sendTextMessage(
+      phone,
+      `✅ Order *#${orderId.slice(-6)}* marked as delivered — awaiting buyer confirmation.`,
+    );
+    await showVendorMenu(phone, session);
+  } catch (err: any) {
+    console.error("Mark delivered error:", err?.message);
+    await sendTextMessage(
+      phone,
+      `❌ ${err?.message || "Could not update order. Ship first, then mark delivered."}`,
     );
   }
 }

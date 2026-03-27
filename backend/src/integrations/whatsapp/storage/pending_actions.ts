@@ -23,7 +23,8 @@ export type ConversationStep =
   | 'AWAITING_DELIVERY_ADDRESS'
   | 'ORDER_CREATED'
   | 'VENDOR_MENU'
-  | 'VENDOR_AWAITING_SHIP_ID';
+  | 'VENDOR_AWAITING_SHIP_ID'
+  | 'VENDOR_AWAITING_DELIVERED_ID';
 
 export interface PendingAction {
   type: 'PRODUCT_SELECTION' | 'DELIVERY_ADDRESS' | 'VENDOR_ACTION';

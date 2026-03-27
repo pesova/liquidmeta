@@ -12,6 +12,7 @@ import {
   updateVendorProduct,
   deleteVendorProduct,
   markVendorOrderShipped,
+  markVendorOrderDelivered,
 } from "../services/vendorService";
 
 /* ── Icons ── */
@@ -439,6 +440,17 @@ export default function VendorDashboard() {
     }
   };
 
+  const handleMarkDelivered = async (orderId) => {
+    try {
+      await markVendorOrderDelivered(orderId);
+      await refreshOrders();
+      await refreshBalance();
+      showToast("Marked delivered — buyer can confirm receipt");
+    } catch (err) {
+      showToast(err.response?.data?.message || err.message || "Could not update order");
+    }
+  };
+
   /* Mark notif read */
   const markAllRead = () => setNotifications(ns => ns.map(n => ({ ...n, read:true })));
 
@@ -729,7 +741,12 @@ export default function VendorDashboard() {
                                 Mark Shipped
                               </button>
                             )}
-                            {o.status !== "PAID_IN_ESCROW" && (
+                            {o.status === "SHIPPED" && (
+                              <button type="button" className="vd-action-btn" onClick={() => handleMarkDelivered(o.id)}>
+                                Mark Delivered
+                              </button>
+                            )}
+                            {!["PAID_IN_ESCROW", "SHIPPED"].includes(o.status) && (
                               <span className="vd-table__na">—</span>
                             )}
                           </td>
@@ -781,7 +798,7 @@ export default function VendorDashboard() {
               <div className="vd-escrow-info__icon"><IconShield /></div>
               <div>
                 <h3 className="vd-escrow-info__title">How Escrow Protects You</h3>
-                <p className="vd-escrow-info__text">When a buyer pays, funds are held securely on the platform. Once you ship and the buyer confirms delivery, funds are instantly released to your account. This eliminates fake payment alerts and guarantees you always get paid.</p>
+                <p className="vd-escrow-info__text">When a buyer pays, funds stay in escrow. Mark the order shipped, then mark it delivered when it reaches the buyer. After they confirm (or after the auto-release window), funds move to your available balance.</p>
               </div>
             </div>
 

@@ -72,10 +72,10 @@ export const checkTransactionStatus = async (req: Request, res: Response) => {
     const amountKobo = escrowRecord.amount;
     const result = await InterswitchProvider.verifyTransaction(reference as string, amountKobo);
     if (result.responseCode === '00') {
-      // Successful payment – finalize escrow
-      // TODO: notify vendor of successful payment
-
-      await EscrowService.finalizeEscrow(escrowRecord.order.toString(), result.paymentReference);
+      await EscrowService.resolveAndFinalize(
+        escrowRecord.interswitchRef,
+        result.paymentReference,
+      );
     }
     res.status(200).json({ success: true, data: result });
   } catch (error: any) {

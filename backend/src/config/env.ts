@@ -43,6 +43,9 @@ interface EnvironmentConfig {
   REDIS_URL: string;
   REDIS_HOST: string;
   REDIS_PORT: number;
+
+  /** Days after "delivered / pending confirmation" before escrow auto-releases if the buyer never confirms */
+  ESCROW_AUTO_RELEASE_DAYS: number;
 }
 
 class EnvConfig {
@@ -127,6 +130,7 @@ class EnvConfig {
       REDIS_URL: this.getString("REDIS_URL", ""),
       REDIS_HOST: this.getString("REDIS_HOST", ""),
       REDIS_PORT: this.getNumber("REDIS_PORT", 6379),
+      ESCROW_AUTO_RELEASE_DAYS: this.getNumber("ESCROW_AUTO_RELEASE_DAYS", 7),
     };
   }
 
@@ -258,6 +262,10 @@ class EnvConfig {
 
   get REDIS_PORT(): number {
     return this.config.REDIS_PORT;
+  }
+
+  get ESCROW_AUTO_RELEASE_DAYS(): number {
+    return this.config.ESCROW_AUTO_RELEASE_DAYS;
   }
 
   get CLOUDINARY_API_SECRET(): string {

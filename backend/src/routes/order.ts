@@ -5,6 +5,7 @@ import {
   confirmDelivery,
   cancelOrder,
   markShipped,
+  markDelivered,
   createOrder,
 } from '../controllers/orderController';
 import { authenticateToken, isVendor } from '../middleware/auth';
@@ -22,5 +23,6 @@ router.patch('/:orderId/cancel', cancelOrder);
 
 // ─── Vendor routes ───────────────────────────────────────────────
 router.patch('/:orderId/ship', isVendor, markShipped);
+router.patch('/:orderId/delivered', isVendor, markDelivered);
 
 export default router;
