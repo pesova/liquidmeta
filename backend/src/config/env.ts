@@ -5,6 +5,7 @@ interface EnvironmentConfig {
   PORT: number;
   NODE_ENV: string;
 
+  ALLOWED_ORIGINS: string[];
   MONGODB_URI: string;
   JWT_SECRET: string;
   JWT_EXPIRES_IN: string;
@@ -56,6 +57,7 @@ class EnvConfig {
       PORT: this.getNumber("PORT", 5000),
       NODE_ENV: this.getString("NODE_ENV", "development"),
 
+      ALLOWED_ORIGINS: this.getString("ALLOWED_ORIGINS", "").split(","),
       MONGODB_URI: this.getString(
         "MONGODB_URI",
         "mongodb://localhost:27017/ai-marketlink",
@@ -152,6 +154,9 @@ class EnvConfig {
   }
   get NODE_ENV(): string {
     return this.config.NODE_ENV;
+  }
+  get ALLOWED_ORIGINS(): string[] {
+    return this.config.ALLOWED_ORIGINS;
   }
   get MONGODB_URI(): string {
     return this.config.MONGODB_URI;

@@ -1,6 +1,18 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useContext, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import "./VendorDashboard.css";
+import { AuthContext } from "../context/AuthContext";
+import {
+  VENDOR_PRODUCT_CATEGORIES,
+  fetchVendorProfile,
+  fetchVendorProducts,
+  fetchVendorOrders,
+  fetchVendorBalance,
+  createVendorProduct,
+  updateVendorProduct,
+  deleteVendorProduct,
+  markVendorOrderShipped,
+} from "../services/vendorService";
 
 /* ── Icons ── */
 const IconHome      = () => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>);
@@ -23,44 +35,70 @@ const IconCalendar  = () => (<svg viewBox="0 0 24 24" fill="none" stroke="curren
 const IconShield    = () => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.25C17.25 22.15 21 17.25 21 12V7L12 2z"/><polyline points="9 12 11 14 15 10"/></svg>);
 const IconStar      = () => (<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>);
 
-/* ── Mock Data ── */
-const MOCK_VENDOR = {
-  name: "Adaeze Okonkwo",
-  businessName: "Adaeze Fashion Hub",
-  email: "adaeze@fashionhub.ng",
-  phone: "+234 812 345 6789",
-  avatar: null,
-  joinDate: "January 2026",
-  rating: 4.9,
-  totalSales: 47,
-  verified: true,
-};
+function categoryLabel(value) {
+  return VENDOR_PRODUCT_CATEGORIES.find((c) => c.value === value)?.label || value || "—";
+}
 
-const MOCK_PRODUCTS = [
-  { id:1, name:"Ankara Midi Dress",     category:"Fashion & Clothing",  price:12500,  qty:15, available:true,  image:null, availFrom:"2026-01-01", availTo:"2026-12-31", description:"Beautiful hand-crafted Ankara fabric." },
-  { id:2, name:"Adire Print Blouse",    category:"Fashion & Clothing",  price:8000,   qty:8,  available:true,  image:null, availFrom:"2026-01-01", availTo:"2026-06-30", description:"Traditional hand-dyed Adire blouse." },
-  { id:3, name:"Aso-Oke Head Wrap",     category:"Fashion & Clothing",  price:5500,   qty:20, available:false, image:null, availFrom:"2026-03-01", availTo:"2026-09-30", description:"Handwoven Aso-Oke in vibrant colours." },
-  { id:4, name:"Boubou Kaftan Set",     category:"Fashion & Clothing",  price:22000,  qty:5,  available:true,  image:null, availFrom:"2026-02-01", availTo:"2026-12-31", description:"Elegant full-length Boubou with matching wrapper." },
-];
+function mapProductFromApi(p) {
+  const qty = p.quantity ?? 0;
+  return {
+    id: p._id,
+    name: p.name,
+    description: p.description,
+    price: p.price,
+    qty,
+    category: categoryLabel(p.category),
+    categoryValue: p.category,
+    imageUrl: p.imageUrl || "",
+    available: qty > 0,
+    createdAt: p.createdAt,
+  };
+}
 
-const MOCK_ORDERS = [
-  { id:"ORD-001", product:"Ankara Midi Dress",  buyer:"Chioma A.",   amount:12500,  status:"DELIVERED",              date:"Mar 18, 2026" },
-  { id:"ORD-002", product:"Adire Print Blouse", buyer:"Kemi O.",     amount:8000,   status:"SHIPPED",                date:"Mar 17, 2026" },
-  { id:"ORD-003", product:"Boubou Kaftan Set",  buyer:"Ngozi E.",    amount:22000,  status:"PAID_IN_ESCROW",         date:"Mar 16, 2026" },
-  { id:"ORD-004", product:"Ankara Midi Dress",  buyer:"Amaka B.",    amount:12500,  status:"PENDING_PAYMENT",        date:"Mar 15, 2026" },
-  { id:"ORD-005", product:"Aso-Oke Head Wrap",  buyer:"Fatima I.",   amount:5500,   status:"COMPLETED",              date:"Mar 14, 2026" },
-  { id:"ORD-006", product:"Boubou Kaftan Set",  buyer:"Blessing N.", amount:22000,  status:"PAID_IN_ESCROW",         date:"Mar 13, 2026" },
-];
+function mapOrderFromApi(o) {
+  const productName =
+    typeof o.product === "object" && o.product?.name ? o.product.name : "—";
+  const buyerName =
+    typeof o.buyer === "object" && o.buyer?.name ? o.buyer.name : "—";
+  const rawId = o._id != null ? String(o._id) : "";
+  return {
+    id: rawId,
+    displayId: rawId ? `…${rawId.slice(-6).toUpperCase()}` : "—",
+    product: productName,
+    buyer: buyerName,
+    amount: o.totalAmount,
+    status: o.status,
+    date: o.createdAt
+      ? new Date(o.createdAt).toLocaleDateString("en-NG", {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        })
+      : "—",
+  };
+}
 
-const MOCK_NOTIFICATIONS = [
-  { id:1, type:"order",   title:"New order received",          msg:"Chioma placed an order for Ankara Midi Dress",    time:"2 mins ago",  read:false },
-  { id:2, type:"escrow",  title:"Funds released",              msg:"₦22,000 released for ORD-005 — Aso-Oke Head Wrap",time:"1 hr ago",   read:false },
-  { id:3, type:"verify",  title:"Document verified",           msg:"Your CAC document has been verified successfully", time:"3 hrs ago",  read:true  },
-  { id:4, type:"order",   title:"Order marked as delivered",   msg:"Kemi confirmed delivery of Adire Print Blouse",   time:"Yesterday",  read:true  },
-  { id:5, type:"escrow",  title:"Payment held in escrow",      msg:"₦22,000 secured for ORD-003 — Boubou Kaftan Set", time:"2 days ago", read:true  },
-];
-
-const CATEGORIES = ["Fashion & Clothing","Electronics","Phones & Accessories","Beauty & Health","Home & Furniture","Food & Groceries","Baby & Kids","Automobile Parts","Books & Stationery","Agro & Farm Produce"];
+function mapVendorProfile(vendorDoc) {
+  const u = vendorDoc?.user || {};
+  const name =
+    u.name ||
+    `${vendorDoc?.firstName || ""} ${vendorDoc?.lastName || ""}`.trim() ||
+    "Vendor";
+  return {
+    name,
+    businessName: vendorDoc?.businessName || "",
+    email: u.email || "",
+    phone: vendorDoc?.phoneNumber || "",
+    joinDate: vendorDoc?.createdAt
+      ? new Date(vendorDoc.createdAt).toLocaleDateString("en-NG", {
+          month: "long",
+          year: "numeric",
+        })
+      : "",
+    verified: true,
+    avatar: u.avatar || null,
+  };
+}
 
 const STATUS_LABELS = {
   PENDING_PAYMENT:         { label:"Awaiting Payment", color:"gray"   },
@@ -72,114 +110,161 @@ const STATUS_LABELS = {
 };
 
 /* ── Add Product Modal ── */
-const AddProductModal = ({ onClose, onSave, editProduct }) => {
-  const imgRef = useRef();
-  const [form, setForm] = useState(editProduct || {
-    name:"", description:"", price:"", qty:"",
-    category:"", available:true, image:null,
-    availFrom:"", availTo:"",
-  });
-  const set = (k,v) => setForm(f => ({ ...f, [k]:v }));
+const emptyProductForm = () => ({
+  name: "",
+  description: "",
+  price: "",
+  qty: "",
+  category: "",
+  imageFile: null,
+});
 
-  const handleSubmit = (e) => {
+const formStateForEdit = (editProduct) =>
+  editProduct
+    ? {
+        name: editProduct.name || "",
+        description: editProduct.description || "",
+        price: editProduct.price != null ? String(editProduct.price) : "",
+        qty: editProduct.qty != null ? String(editProduct.qty) : "",
+        category: editProduct.categoryValue || "",
+        imageFile: null,
+      }
+    : emptyProductForm();
+
+const AddProductModal = ({ onClose, onSave, editProduct, submitting }) => {
+  const imgRef = useRef();
+  const [form, setForm] = useState(() => formStateForEdit(editProduct));
+  const [localError, setLocalError] = useState("");
+
+  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    onSave({ ...form, id: editProduct?.id || Date.now(), price: Number(form.price), qty: Number(form.qty) });
-    onClose();
+    setLocalError("");
+    if (!editProduct && !form.imageFile) {
+      setLocalError("Please upload a product image.");
+      return;
+    }
+    const payload = {
+      name: form.name.trim(),
+      description: form.description.trim(),
+      price: Number(form.price),
+      qty: Number(form.qty),
+      category: form.category,
+      imageFile: form.imageFile,
+    };
+    if (payload.price <= 0 || Number.isNaN(payload.price)) {
+      setLocalError("Enter a valid price.");
+      return;
+    }
+    if (payload.qty < 0 || Number.isNaN(payload.qty)) {
+      setLocalError("Enter a valid stock quantity.");
+      return;
+    }
+    try {
+      await onSave(payload, editProduct);
+    } catch (err) {
+      const msg =
+        err.response?.data?.message ||
+        err.message ||
+        "Could not save product.";
+      setLocalError(msg);
+    }
   };
 
+  const hasPreview =
+    form.imageFile ||
+    (editProduct?.imageUrl && !form.imageFile);
+
   return (
-    <div className="vd-modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+    <div className="vd-modal-overlay" onClick={(e) => e.target === e.currentTarget && !submitting && onClose()}>
       <div className="vd-modal">
         <div className="vd-modal__header">
           <h2 className="vd-modal__title">{editProduct ? "Edit Product" : "Add New Product"}</h2>
-          <button className="vd-modal__close" onClick={onClose}><IconX /></button>
+          <button type="button" className="vd-modal__close" onClick={onClose} disabled={submitting}><IconX /></button>
         </div>
         <form onSubmit={handleSubmit} className="vd-modal__form">
 
-          {/* Image upload */}
           <div className="vd-form-field">
-            <label className="vd-form-label">Product Image</label>
-            <div className={`vd-img-upload${form.image ? " has-img" : ""}`} onClick={() => imgRef.current.click()}>
-              <input ref={imgRef} type="file" accept="image/*" style={{ display:"none" }}
-                onChange={e => { if(e.target.files[0]) set("image", e.target.files[0]); }} />
-              {form.image ? (
+            <label className="vd-form-label">Product Image {editProduct ? "" : <span>*</span>}</label>
+            <div
+              className={`vd-img-upload${hasPreview ? " has-img" : ""}`}
+              onClick={() => !submitting && imgRef.current?.click()}
+            >
+              <input
+                ref={imgRef}
+                type="file"
+                accept="image/*"
+                style={{ display: "none" }}
+                onChange={(e) => {
+                  if (e.target.files[0]) set("imageFile", e.target.files[0]);
+                }}
+              />
+              {form.imageFile ? (
                 <div className="vd-img-upload__preview">
-                  <img src={URL.createObjectURL(form.image)} alt="preview" />
+                  <img src={URL.createObjectURL(form.imageFile)} alt="preview" />
                   <span className="vd-img-upload__change">Click to change</span>
+                </div>
+              ) : editProduct?.imageUrl ? (
+                <div className="vd-img-upload__preview">
+                  <img src={editProduct.imageUrl} alt="Current" />
+                  <span className="vd-img-upload__change">Click to replace image (not sent yet)</span>
                 </div>
               ) : (
                 <>
                   <span className="vd-img-upload__icon"><IconUpload /></span>
                   <span className="vd-img-upload__text">Click to upload product image</span>
-                  <span className="vd-img-upload__hint">JPG, PNG — max 5MB</span>
+                  <span className="vd-img-upload__hint">JPG, PNG — required for new products</span>
                 </>
               )}
             </div>
+            {editProduct && (
+              <p className="vd-form-hint" style={{ marginTop: 8, fontSize: 13, opacity: 0.8 }}>
+                Updating the image requires a new listing API; edits apply name, price, stock, and category only.
+              </p>
+            )}
           </div>
 
           <div className="vd-form-row">
             <div className="vd-form-field">
               <label className="vd-form-label">Product Name <span>*</span></label>
-              <input className="vd-form-input" placeholder="e.g. Ankara Midi Dress" value={form.name} onChange={e => set("name", e.target.value)} required />
+              <input className="vd-form-input" placeholder="e.g. Ankara Midi Dress" value={form.name} onChange={(e) => set("name", e.target.value)} required disabled={submitting} />
             </div>
             <div className="vd-form-field">
               <label className="vd-form-label">Category <span>*</span></label>
-              <select className="vd-form-input vd-form-select" value={form.category} onChange={e => set("category", e.target.value)} required>
+              <select className="vd-form-input vd-form-select" value={form.category} onChange={(e) => set("category", e.target.value)} required disabled={submitting}>
                 <option value="">Select category</option>
-                {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+                {VENDOR_PRODUCT_CATEGORIES.map((c) => (
+                  <option key={c.value} value={c.value}>{c.label}</option>
+                ))}
               </select>
             </div>
           </div>
 
           <div className="vd-form-field">
             <label className="vd-form-label">Description <span>*</span></label>
-            <textarea className="vd-form-input vd-form-textarea" placeholder="Describe your product in detail..." value={form.description} onChange={e => set("description", e.target.value)} required rows={3} />
+            <textarea className="vd-form-input vd-form-textarea" placeholder="Describe your product in detail..." value={form.description} onChange={(e) => set("description", e.target.value)} required rows={3} disabled={submitting} />
           </div>
 
           <div className="vd-form-row">
             <div className="vd-form-field">
               <label className="vd-form-label">Price (₦) <span>*</span></label>
-              <input className="vd-form-input" type="number" placeholder="e.g. 12500" value={form.price} onChange={e => set("price", e.target.value)} required min="1" />
+              <input className="vd-form-input" type="number" placeholder="e.g. 12500" value={form.price} onChange={(e) => set("price", e.target.value)} required min="1" disabled={submitting} />
             </div>
             <div className="vd-form-field">
-              <label className="vd-form-label">Quantity <span>*</span></label>
-              <input className="vd-form-input" type="number" placeholder="e.g. 10" value={form.qty} onChange={e => set("qty", e.target.value)} required min="1" />
+              <label className="vd-form-label">Quantity in stock <span>*</span></label>
+              <input className="vd-form-input" type="number" placeholder="e.g. 10" value={form.qty} onChange={(e) => set("qty", e.target.value)} required min="0" disabled={submitting} />
             </div>
           </div>
 
-          <div className="vd-form-row">
-            <div className="vd-form-field">
-              <label className="vd-form-label">Available From <span>*</span></label>
-              <div className="vd-form-icon-wrap">
-                <span className="vd-form-icon"><IconCalendar /></span>
-                <input className="vd-form-input vd-form-input--icon" type="date" value={form.availFrom} onChange={e => set("availFrom", e.target.value)} required />
-              </div>
-            </div>
-            <div className="vd-form-field">
-              <label className="vd-form-label">Available Until <span>*</span></label>
-              <div className="vd-form-icon-wrap">
-                <span className="vd-form-icon"><IconCalendar /></span>
-                <input className="vd-form-input vd-form-input--icon" type="date" value={form.availTo} onChange={e => set("availTo", e.target.value)} required />
-              </div>
-            </div>
-          </div>
-
-          <div className="vd-form-field">
-            <label className="vd-form-label">Stock Availability</label>
-            <div className="vd-toggle-wrap">
-              <button type="button" className={`vd-toggle${form.available ? " on" : ""}`} onClick={() => set("available", !form.available)}>
-                <span className="vd-toggle__thumb" />
-              </button>
-              <span className={`vd-toggle__label${form.available ? " on" : ""}`}>
-                {form.available ? "Available for purchase" : "Out of stock / Hidden"}
-              </span>
-            </div>
-          </div>
+          {localError && (
+            <div className="vd-form-error" style={{ color: "#c62828", fontSize: 14 }}>{localError}</div>
+          )}
 
           <div className="vd-modal__footer">
-            <button type="button" className="vd-btn vd-btn--ghost" onClick={onClose}>Cancel</button>
-            <button type="submit" className="vd-btn vd-btn--gold">
-              {editProduct ? "Save Changes" : "Add Product"}
+            <button type="button" className="vd-btn vd-btn--ghost" onClick={onClose} disabled={submitting}>Cancel</button>
+            <button type="submit" className="vd-btn vd-btn--gold" disabled={submitting}>
+              {submitting ? "Saving…" : editProduct ? "Save Changes" : "Add Product"}
             </button>
           </div>
         </form>
@@ -191,50 +276,167 @@ const AddProductModal = ({ onClose, onSave, editProduct }) => {
 /* ── Main Dashboard ── */
 export default function VendorDashboard() {
   const navigate = useNavigate();
-  const [products, setProducts]         = useState(MOCK_PRODUCTS);
-  const [orders, setOrders]             = useState(MOCK_ORDERS);
-  const [notifications, setNotifications] = useState(MOCK_NOTIFICATIONS);
+  const { logout } = useContext(AuthContext);
+  const [products, setProducts] = useState([]);
+  const [orders, setOrders] = useState([]);
+  const [notifications, setNotifications] = useState([]);
+  const [vendorProfile, setVendorProfile] = useState(null);
+  const [balance, setBalance] = useState({ escrow: 0, available: 0 });
+  const [dashboardLoading, setDashboardLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [editProduct, setEditProduct]   = useState(null);
+  const [editProduct, setEditProduct] = useState(null);
+  const [saveProductSubmitting, setSaveProductSubmitting] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [activeSection, setActiveSection] = useState("overview");
-  const [orderFilter, setOrderFilter]   = useState("ALL");
-  const [toast, setToast]               = useState("");
-  const [showNotifs, setShowNotifs]     = useState(false);
+  const [orderFilter, setOrderFilter] = useState("ALL");
+  const [toast, setToast] = useState("");
+  const [showNotifs, setShowNotifs] = useState(false);
 
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const unreadCount = notifications.filter((n) => !n.read).length;
 
-  const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(""), 3000); };
+  const showToast = (msg) => {
+    setToast(msg);
+    setTimeout(() => setToast(""), 3800);
+  };
 
-  /* Stats */
-  const escrowTotal    = orders.filter(o => o.status === "PAID_IN_ESCROW").reduce((s,o) => s + o.amount, 0);
-  const availableTotal = orders.filter(o => o.status === "COMPLETED").reduce((s,o) => s + o.amount, 0);
-  const totalRevenue   = orders.filter(o => ["COMPLETED","PAID_IN_ESCROW","SHIPPED"].includes(o.status)).reduce((s,o) => s + o.amount, 0);
-  const totalOrders    = orders.length;
+  const refreshProducts = useCallback(async () => {
+    const list = await fetchVendorProducts();
+    setProducts((list || []).map(mapProductFromApi));
+  }, []);
 
-  /* Product actions */
-  const handleSaveProduct = (product) => {
-    if (product.id && products.find(p => p.id === product.id)) {
-      setProducts(ps => ps.map(p => p.id === product.id ? product : p));
-      showToast("Product updated successfully");
-    } else {
-      setProducts(ps => [...ps, product]);
-      showToast("Product added successfully");
+  const refreshOrders = useCallback(async () => {
+    const list = await fetchVendorOrders();
+    setOrders((list || []).map(mapOrderFromApi));
+  }, []);
+
+  const refreshBalance = useCallback(async () => {
+    const b = await fetchVendorBalance();
+    setBalance({
+      escrow: typeof b?.escrow === "number" ? b.escrow : 0,
+      available: typeof b?.available === "number" ? b.available : 0,
+    });
+  }, []);
+
+  const loadDashboard = useCallback(async () => {
+    setDashboardLoading(true);
+    try {
+      const [profile, productList, orderList, b] = await Promise.all([
+        fetchVendorProfile(),
+        fetchVendorProducts(),
+        fetchVendorOrders(),
+        fetchVendorBalance(),
+      ]);
+      setVendorProfile(mapVendorProfile(profile));
+      setProducts((productList || []).map(mapProductFromApi));
+      setOrders((orderList || []).map(mapOrderFromApi));
+      setBalance({
+        escrow: typeof b?.escrow === "number" ? b.escrow : 0,
+        available: typeof b?.available === "number" ? b.available : 0,
+      });
+    } catch (err) {
+      const msg = err.response?.data?.message || err.message || "Failed to load dashboard";
+      setToast(msg);
+      setTimeout(() => setToast(""), 4000);
+    } finally {
+      setDashboardLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadDashboard();
+  }, [loadDashboard]);
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } finally {
+      navigate("/", { replace: true });
     }
   };
-  const handleDeleteProduct = (id) => {
-    setProducts(ps => ps.filter(p => p.id !== id));
-    setDeleteConfirm(null);
-    showToast("Product deleted");
-  };
-  const handleToggleAvailable = (id) => {
-    setProducts(ps => ps.map(p => p.id === id ? { ...p, available: !p.available } : p));
+
+  const profile =
+    vendorProfile || {
+      name: "…",
+      businessName: "",
+      email: "",
+      verified: false,
+      avatar: null,
+    };
+
+  /* Escrow / available from ledger API; revenue approximated from orders */
+  const escrowTotal = balance.escrow;
+  const availableTotal = balance.available;
+  const totalRevenue = orders
+    .filter((o) =>
+      ["COMPLETED", "PAID_IN_ESCROW", "SHIPPED", "DELIVERED_PENDING_CONFIRMATION"].includes(
+        o.status,
+      ),
+    )
+    .reduce((s, o) => s + o.amount, 0);
+  const totalOrders = orders.length;
+
+  const handleSaveProduct = async (payload, editing) => {
+    setSaveProductSubmitting(true);
+    try {
+      if (editing) {
+        await updateVendorProduct(editing.id, {
+          name: payload.name,
+          description: payload.description,
+          price: payload.price,
+          category: payload.category,
+          quantity: payload.qty,
+        });
+        showToast("Product updated successfully");
+      } else {
+        await createVendorProduct({
+          name: payload.name,
+          description: payload.description,
+          price: payload.price,
+          category: payload.category,
+          quantity: payload.qty,
+          imageFile: payload.imageFile,
+        });
+        showToast("Product added successfully");
+      }
+      await refreshProducts();
+      setShowAddModal(false);
+      setEditProduct(null);
+    } finally {
+      setSaveProductSubmitting(false);
+    }
   };
 
-  /* Order status update */
-  const handleStatusUpdate = (orderId, newStatus) => {
-    setOrders(os => os.map(o => o.id === orderId ? { ...o, status: newStatus } : o));
-    showToast(`Order ${orderId} updated to ${STATUS_LABELS[newStatus]?.label}`);
+  const handleDeleteProduct = async (id) => {
+    try {
+      await deleteVendorProduct(id);
+      setDeleteConfirm(null);
+      showToast("Product deleted");
+      await refreshProducts();
+    } catch (err) {
+      showToast(err.response?.data?.message || err.message || "Delete failed");
+    }
+  };
+
+  const handleToggleAvailable = async (p) => {
+    const nextQty = p.qty > 0 ? 0 : 1;
+    try {
+      await updateVendorProduct(p.id, { quantity: nextQty });
+      await refreshProducts();
+      showToast(nextQty > 0 ? "Product marked in stock" : "Product marked out of stock");
+    } catch (err) {
+      showToast(err.response?.data?.message || err.message || "Update failed");
+    }
+  };
+
+  const handleMarkShipped = async (orderId) => {
+    try {
+      await markVendorOrderShipped(orderId);
+      await refreshOrders();
+      await refreshBalance();
+      showToast("Order marked as shipped");
+    } catch (err) {
+      showToast(err.response?.data?.message || err.message || "Could not update order");
+    }
   };
 
   /* Mark notif read */
@@ -265,6 +467,9 @@ export default function VendorDashboard() {
           <span className="vd-topbar__title">Vendor Dashboard</span>
         </div>
         <div className="vd-topbar__right">
+          <button className="vd-logout-btn" onClick={handleLogout}>
+            Logout
+          </button>
           {/* Notification bell */}
           <div className="vd-notif-wrap">
             <button className="vd-icon-btn" onClick={() => setShowNotifs(s => !s)}>
@@ -293,15 +498,15 @@ export default function VendorDashboard() {
           </div>
 
           {/* Vendor profile */}
-          <button className="vd-profile-btn" onClick={() => navigate("/vendor/profile")}>
+          <button type="button" className="vd-profile-btn" onClick={() => navigate("/vendor/profile")}>
             <div className="vd-profile-btn__avatar">
-              {MOCK_VENDOR.avatar ? <img src={MOCK_VENDOR.avatar} alt="" /> : <IconUser />}
+              {profile.avatar ? <img src={profile.avatar} alt="" /> : <IconUser />}
             </div>
             <div className="vd-profile-btn__info">
-              <span className="vd-profile-btn__name">{MOCK_VENDOR.name}</span>
-              <span className="vd-profile-btn__biz">{MOCK_VENDOR.businessName}</span>
+              <span className="vd-profile-btn__name">{profile.name}</span>
+              <span className="vd-profile-btn__biz">{profile.businessName || "Vendor"}</span>
             </div>
-            {MOCK_VENDOR.verified && <span className="vd-verified-badge"><IconShield /></span>}
+            {profile.verified && <span className="vd-verified-badge"><IconShield /></span>}
           </button>
         </div>
       </header>
@@ -320,13 +525,18 @@ export default function VendorDashboard() {
 
       {/* ── CONTENT ── */}
       <main className="vd-main">
+        {dashboardLoading && (
+          <div className="vd-section" style={{ textAlign: "center", padding: "3rem 1rem", opacity: 0.85 }}>
+            Loading your dashboard…
+          </div>
+        )}
 
         {/* ════ OVERVIEW ════ */}
-        {activeSection === "overview" && (
+        {!dashboardLoading && activeSection === "overview" && (
           <section className="vd-section">
             <div className="vd-section__head">
               <h2 className="vd-section__title">Overview</h2>
-              <p className="vd-section__sub">Welcome back, {MOCK_VENDOR.name.split(" ")[0]}</p>
+              <p className="vd-section__sub">Welcome back, {profile.name.split(" ")[0]}</p>
             </div>
 
             {/* Stats grid */}
@@ -362,7 +572,7 @@ export default function VendorDashboard() {
                       const s = STATUS_LABELS[o.status] || { label: o.status, color:"gray" };
                       return (
                         <tr key={o.id}>
-                          <td className="vd-table__id">{o.id}</td>
+                          <td className="vd-table__id">{o.displayId}</td>
                           <td>{o.product}</td>
                           <td>{o.buyer}</td>
                           <td className="vd-table__amount">₦{o.amount.toLocaleString()}</td>
@@ -384,7 +594,11 @@ export default function VendorDashboard() {
               <div className="vd-products-mini">
                 {products.map(p => (
                   <div key={p.id} className="vd-product-mini">
-                    <div className="vd-product-mini__img"><IconPackage /></div>
+                    <div className="vd-product-mini__img">
+                      {p.imageUrl
+                        ? <img src={p.imageUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                        : <IconPackage />}
+                    </div>
                     <div className="vd-product-mini__info">
                       <div className="vd-product-mini__name">{p.name}</div>
                       <div className="vd-product-mini__price">₦{p.price.toLocaleString()}</div>
@@ -398,7 +612,7 @@ export default function VendorDashboard() {
         )}
 
         {/* ════ PRODUCTS ════ */}
-        {activeSection === "products" && (
+        {!dashboardLoading && activeSection === "products" && (
           <section className="vd-section">
             <div className="vd-section__head">
               <div>
@@ -413,8 +627,8 @@ export default function VendorDashboard() {
               {products.map(p => (
                 <div key={p.id} className="vd-product-card">
                   <div className="vd-product-card__img">
-                    {p.image
-                      ? <img src={URL.createObjectURL(p.image)} alt={p.name} />
+                    {p.imageUrl
+                      ? <img src={p.imageUrl} alt={p.name} />
                       : <div className="vd-product-card__placeholder"><IconPackage /></div>
                     }
                     <span className={`vd-product-card__avail${p.available?" on":""}`}>
@@ -432,11 +646,15 @@ export default function VendorDashboard() {
                       </div>
                       <div className="vd-product-card__period">
                         <IconCalendar />
-                        <span>{p.availFrom} — {p.availTo}</span>
+                        <span>
+                          {p.createdAt
+                            ? `Listed ${new Date(p.createdAt).toLocaleDateString("en-NG", { month: "short", day: "numeric", year: "numeric" })}`
+                            : "—"}
+                        </span>
                       </div>
                     </div>
                     <div className="vd-product-card__actions">
-                      <button className="vd-icon-btn-sm" title="Toggle availability" onClick={() => handleToggleAvailable(p.id)}>
+                      <button type="button" className="vd-icon-btn-sm" title="Toggle availability" onClick={() => handleToggleAvailable(p)}>
                         <IconEye />
                       </button>
                       <button className="vd-icon-btn-sm" title="Edit" onClick={() => { setEditProduct(p); setShowAddModal(true); }}>
@@ -464,7 +682,7 @@ export default function VendorDashboard() {
         )}
 
         {/* ════ ORDERS ════ */}
-        {activeSection === "orders" && (
+        {!dashboardLoading && activeSection === "orders" && (
           <section className="vd-section">
             <div className="vd-section__head">
               <div>
@@ -475,7 +693,7 @@ export default function VendorDashboard() {
 
             {/* Filter tabs */}
             <div className="vd-order-filters">
-              {["ALL","PENDING_PAYMENT","PAID_IN_ESCROW","SHIPPED","COMPLETED","CANCELLED"].map(f => (
+              {["ALL","PENDING_PAYMENT","PAID_IN_ESCROW","SHIPPED","DELIVERED_PENDING_CONFIRMATION","COMPLETED","CANCELLED"].map(f => (
                 <button key={f} className={`vd-filter-tab${orderFilter===f?" active":""}`} onClick={() => setOrderFilter(f)}>
                   {f === "ALL" ? "All Orders" : STATUS_LABELS[f]?.label || f}
                   <span className="vd-filter-tab__count">
@@ -499,7 +717,7 @@ export default function VendorDashboard() {
                       const s = STATUS_LABELS[o.status] || { label:o.status, color:"gray" };
                       return (
                         <tr key={o.id}>
-                          <td className="vd-table__id">{o.id}</td>
+                          <td className="vd-table__id">{o.displayId}</td>
                           <td>{o.product}</td>
                           <td>{o.buyer}</td>
                           <td className="vd-table__amount">₦{o.amount.toLocaleString()}</td>
@@ -507,16 +725,11 @@ export default function VendorDashboard() {
                           <td><span className={`vd-status vd-status--${s.color}`}>{s.label}</span></td>
                           <td>
                             {o.status === "PAID_IN_ESCROW" && (
-                              <button className="vd-action-btn" onClick={() => handleStatusUpdate(o.id, "SHIPPED")}>
+                              <button type="button" className="vd-action-btn" onClick={() => handleMarkShipped(o.id)}>
                                 Mark Shipped
                               </button>
                             )}
-                            {o.status === "PENDING_PAYMENT" && (
-                              <button className="vd-action-btn vd-action-btn--cancel" onClick={() => handleStatusUpdate(o.id, "CANCELLED")}>
-                                Cancel
-                              </button>
-                            )}
-                            {["SHIPPED","COMPLETED","CANCELLED"].includes(o.status) && (
+                            {o.status !== "PAID_IN_ESCROW" && (
                               <span className="vd-table__na">—</span>
                             )}
                           </td>
@@ -534,7 +747,7 @@ export default function VendorDashboard() {
         )}
 
         {/* ════ ESCROW ════ */}
-        {activeSection === "escrow" && (
+        {!dashboardLoading && activeSection === "escrow" && (
           <section className="vd-section">
             <div className="vd-section__head">
               <h2 className="vd-section__title">Escrow Balance</h2>
@@ -585,7 +798,7 @@ export default function VendorDashboard() {
                       const s = STATUS_LABELS[o.status] || { label:o.status, color:"gray" };
                       return (
                         <tr key={o.id}>
-                          <td className="vd-table__id">{o.id}</td>
+                          <td className="vd-table__id">{o.displayId}</td>
                           <td>{o.product}</td>
                           <td className="vd-table__amount">₦{o.amount.toLocaleString()}</td>
                           <td><span className={`vd-status vd-status--${s.color}`}>{s.label}</span></td>
@@ -601,7 +814,7 @@ export default function VendorDashboard() {
         )}
 
         {/* ════ NOTIFICATIONS ════ */}
-        {activeSection === "notifications" && (
+        {!dashboardLoading && activeSection === "notifications" && (
           <section className="vd-section">
             <div className="vd-section__head">
               <div>
@@ -613,6 +826,9 @@ export default function VendorDashboard() {
               )}
             </div>
             <div className="vd-notifs-list">
+              {notifications.length === 0 && (
+                <p className="vd-section__sub" style={{ padding: "2rem", textAlign: "center" }}>No notifications yet.</p>
+              )}
               {notifications.map(n => (
                 <div key={n.id} className={`vd-notif-full${n.read ? "" : " unread"}`}
                   onClick={() => setNotifications(ns => ns.map(x => x.id===n.id ? {...x,read:true} : x))}>
@@ -633,9 +849,11 @@ export default function VendorDashboard() {
       {/* ── ADD/EDIT PRODUCT MODAL ── */}
       {showAddModal && (
         <AddProductModal
-          onClose={() => { setShowAddModal(false); setEditProduct(null); }}
+          key={editProduct?.id ? String(editProduct.id) : "new-product"}
+          onClose={() => { if (!saveProductSubmitting) { setShowAddModal(false); setEditProduct(null); } }}
           onSave={handleSaveProduct}
           editProduct={editProduct}
+          submitting={saveProductSubmitting}
         />
       )}
 

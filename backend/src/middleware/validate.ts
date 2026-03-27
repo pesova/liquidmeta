@@ -5,7 +5,7 @@ export class ValidationError extends Error {
   errors: { field: string | number; message: string }[];
 
   constructor(errors: { field: string | number; message: string }[]) {
-    super('Validation failed2');
+    super('Validation failed');
     this.name = 'ValidationError';
     this.errors = errors;
   }

@@ -14,13 +14,14 @@ import webhookRoutes from './routes/webhook';
 
 
 const app = express();
-
+const allowedOrigins = env.ALLOWED_ORIGINS;
 app.use(cors({
-  origin: '*',
-  credentials: true
+  origin: allowedOrigins, // or your deployed frontend
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
 }));
-// Parse raw body for WhatsApp webhook (required for HMAC verification)
-// app.use('/api/whatsapp', express.raw({ type: 'application/json' }));
+
 app.use(express.json());
 
 // API Routes

@@ -84,11 +84,16 @@ async onboard(
   }
 
   async getProducts(vendorId: string) {
-    return Product.find({ vendorId });
+    return Product.find({ vendor: vendorId })
+      .select('-embedding')
+      .sort({ createdAt: -1 });
   }
 
   async getOrders(vendorId: string) {
-    return Order.find({ vendorId });
+    return Order.find({ vendor: vendorId })
+      .populate('product', 'name imageUrl price')
+      .populate('buyer', 'name email')
+      .sort({ createdAt: -1 });
   }
 
   async getBalance(vendorId: string) {

@@ -54,8 +54,7 @@ export const handleIncomingMessage = async (
   try {
     const message = parseIncomingMessage(req.body);
     if (!message) return;
-    console.log('\n\n', { message }, "parsed message \n\n");
-    // await sendTypingIndicator(message.from, message.messageId);
+    await sendTypingIndicator(message.from, message.messageId);
 
     const phone = whatsappAuthService.normalizePhone(message.from);
     const session = await getSession(phone);

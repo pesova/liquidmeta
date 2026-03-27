@@ -39,6 +39,22 @@ button { font-family:var(--font-body); cursor:pointer; }
 .cp-logo-ai { font-family:var(--font-head); font-weight:800; font-size:.85rem; background:linear-gradient(135deg,var(--gold),var(--gold-br)); color:#0a2e1a; padding:2px 7px; border-radius:5px; }
 .cp-logo-name { font-family:var(--font-head); font-weight:700; font-size:.9rem; color:var(--text-1); }
 .cp-topbar__right { display:flex; align-items:center; gap:10px; }
+.cp-logout-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-2);
+  border-radius: 8px;
+  height: 34px;
+  padding: 0 12px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  transition: all var(--t);
+}
+.cp-logout-btn:hover {
+  color: var(--text-1);
+  border-color: var(--border-2);
+  background: var(--bg-hover);
+}
 .cp-cart-btn { position:relative; background:var(--bg-hover); border:1px solid var(--border); border-radius:8px; width:34px; height:34px; display:flex; align-items:center; justify-content:center; color:var(--text-2); transition:all var(--t); }
 .cp-cart-btn svg { width:16px; height:16px; }
 .cp-cart-btn:hover { border-color:var(--border-2); color:var(--text-1); }
@@ -130,6 +146,7 @@ button { font-family:var(--font-body); cursor:pointer; }
 
 /* ── TOAST ── */
 .cp-toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:var(--bg-panel); border:1px solid var(--border-2); color:var(--text-1); padding:9px 16px; border-radius:9px; display:flex; align-items:center; gap:7px; font-size:.8rem; font-weight:500; box-shadow:0 8px 24px rgba(0,0,0,.4); z-index:200; white-space:nowrap; animation:toastIn .25s ease; }
+.cp-toast--subtle { z-index: 350; opacity: 0.95; }
 .cp-toast svg { width:14px; height:14px; color:var(--gold); }
 @keyframes toastIn { from{opacity:0;transform:translateX(-50%) translateY(10px)}to{opacity:1;transform:translateX(-50%) translateY(0)} }
 
