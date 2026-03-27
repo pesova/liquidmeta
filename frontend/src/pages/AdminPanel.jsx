@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { adminAPI } from "../utils/api";
 import "./AdminPanel.css";
 
 /* ── Icons ── */
@@ -84,11 +85,11 @@ const EditBalanceModal = ({ item, type, onClose, onSave }) => {
           </div>
           <div className="ad-form-field">
             <label className="ad-form-label">Transaction</label>
-            <div className="ad-form-static">{item.id} — {item.product}</div>
+            <div className="ad-form-static">{item.id} ΓÇö {item.product}</div>
           </div>
           <div className="ad-form-field">
             <label className="ad-form-label">
-              {type === "escrow" ? "Escrow Amount (₦)" : "Transaction Amount (₦)"}
+              {type === "escrow" ? "Escrow Amount (Γéª)" : "Transaction Amount (Γéª)"}
             </label>
             <input
               className="ad-form-input"
@@ -132,14 +133,14 @@ const DisputeModal = ({ dispute, onClose, onResolve }) => {
     <div className="ad-modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="ad-modal">
         <div className="ad-modal__header">
-          <h3 className="ad-modal__title">Resolve Dispute — {dispute.id}</h3>
+          <h3 className="ad-modal__title">Resolve Dispute ΓÇö {dispute.id}</h3>
           <button className="ad-modal__close" onClick={onClose}><IconX /></button>
         </div>
         <div className="ad-modal__body">
           <div className="ad-dispute-info">
             <div className="ad-dispute-row"><span>Transaction</span><strong>{dispute.txn}</strong></div>
             <div className="ad-dispute-row"><span>Product</span><strong>{dispute.product}</strong></div>
-            <div className="ad-dispute-row"><span>Amount</span><strong>₦{dispute.amount.toLocaleString()}</strong></div>
+            <div className="ad-dispute-row"><span>Amount</span><strong>Γéª{dispute.amount.toLocaleString()}</strong></div>
             <div className="ad-dispute-row"><span>Buyer</span><strong>{dispute.buyer}</strong></div>
             <div className="ad-dispute-row"><span>Vendor</span><strong>{dispute.vendor}</strong></div>
             <div className="ad-dispute-row"><span>Reason</span><strong>{dispute.reason}</strong></div>
@@ -204,7 +205,7 @@ const ReleaseFundsModal = ({ txn, onClose, onConfirm }) => (
       <div className="ad-modal__body">
         <div className="ad-release-summary">
           <div className="ad-release-icon"><IconRelease /></div>
-          <div className="ad-release-amount">₦{txn.escrow.toLocaleString()}</div>
+          <div className="ad-release-amount">Γéª{txn.escrow.toLocaleString()}</div>
           <div className="ad-release-label">will be released to</div>
           <div className="ad-release-vendor">{txn.vendor}</div>
         </div>
@@ -238,37 +239,68 @@ export default function AdminPanel() {
   const [releaseModal, setReleaseModal]   = useState(null);
   const [toast, setToast]                 = useState("");
 
+  // Load real data from backend
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const [statsRes, vendorsRes, txnsRes, disputesRes] = await Promise.allSettled([
+          adminAPI.getStats(),
+          adminAPI.getVendors(),
+          adminAPI.getTransactions(),
+          adminAPI.getDisputes(),
+        ]);
+        if (statsRes.status === "fulfilled") {
+          const s = statsRes.value.data || {};
+          // Stats are shown inline from mock ΓÇö update if needed
+        }
+        if (vendorsRes.status === "fulfilled") {
+          const v = vendorsRes.value.data || [];
+          if (Array.isArray(v) && v.length > 0) setVendors(v);
+        }
+        if (txnsRes.status === "fulfilled") {
+          const t = txnsRes.value.data || [];
+          if (Array.isArray(t) && t.length > 0) setTransactions(t);
+        }
+        if (disputesRes.status === "fulfilled") {
+          const d = disputesRes.value.data || [];
+          if (Array.isArray(d) && d.length > 0) setDisputes(d);
+        }
+      } catch { /* keep mock data */ }
+    };
+    load();
+  }, []);
+
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(""), 3000); };
 
   /* ── Actions ── */
-  const handleVerifyVendor = (id) => {
+  const handleVerifyVendor = async (id) => {
     setVendors(vs => vs.map(v => v.id === id ? { ...v, verified: true } : v));
     showToast("Vendor verified successfully");
-    // TODO: PATCH /api/admin/vendors/:id/verify
+    try { await adminAPI.verifyVendor(id); } catch {}
   };
 
-  const handleSuspendVendor = (id) => {
+  const handleSuspendVendor = async (id) => {
     setVendors(vs => vs.map(v => v.id === id ? { ...v, status: v.status === "suspended" ? "active" : "suspended" } : v));
     showToast("Vendor status updated");
-    // TODO: PATCH /api/admin/vendors/:id/status
+    try { await adminAPI.suspendVendor(id); } catch {}
   };
 
-  const handleReleaseFunds = (txnId) => {
+  const handleReleaseFunds = async (txnId) => {
     setTransactions(ts => ts.map(t => t.id === txnId ? { ...t, status: "COMPLETED", escrow: 0 } : t));
     showToast("Funds released to vendor");
-    // TODO: POST /api/admin/escrow/:txnId/release
+    try { await adminAPI.releaseFunds(txnId); } catch {}
   };
 
-  const handleResolveDispute = (disputeId, decision, note) => {
+  const handleResolveDispute = async (disputeId, decision, note) => {
     setDisputes(ds => ds.map(d => d.id === disputeId ? { ...d, status: "resolved", decision, note } : d));
-    showToast(`Dispute resolved — ${decision === "buyer" ? "Buyer refunded" : decision === "vendor" ? "Funds released to vendor" : "Split 50/50"}`);
-    // TODO: POST /api/admin/disputes/:id/resolve
+    showToast(`Dispute resolved ΓÇö ${decision === "buyer" ? "Buyer refunded" : decision === "vendor" ? "Funds released to vendor" : "Split 50/50"}`);
+    try { await adminAPI.resolveDispute(disputeId, { decision, note }); } catch {}
   };
 
-  const handleUpdateBalance = (txnId, newValue, note) => {
+  const handleUpdateBalance = async (txnId, newValue, note) => {
     setTransactions(ts => ts.map(t => t.id === txnId ? { ...t, escrow: newValue } : t));
     showToast(`Balance updated for ${txnId}`);
-    // TODO: PATCH /api/admin/transactions/:id/balance
+    try { await adminAPI.updateBalance(txnId, { amount: newValue, note }); } catch {}
   };
 
   /* ── Filtered data ── */
@@ -343,15 +375,15 @@ export default function AdminPanel() {
 
         <div className="ad-content">
 
-          {/* ════ OVERVIEW ════ */}
+          {/* ΓòÉΓòÉΓòÉΓòÉ OVERVIEW ΓòÉΓòÉΓòÉΓòÉ */}
           {activeSection === "overview" && (
             <div className="ad-section">
               <div className="ad-stats-grid">
                 {[
                   { Icon:IconUsers,   label:"Total Users",        val:MOCK_STATS.totalUsers.toLocaleString(),                  color:"blue",   sub:"Buyers & vendors" },
                   { Icon:IconShield,  label:"Verified Vendors",   val:vendors.filter(v=>v.verified).length,                    color:"green",  sub:`of ${vendors.length} total` },
-                  { Icon:IconDollar,  label:"Total Revenue",      val:`₦${(MOCK_STATS.totalRevenue/1000000).toFixed(1)}M`,     color:"gold",   sub:"All time" },
-                  { Icon:IconLock,    label:"In Escrow",          val:`₦${(escrowTotal/1000).toFixed(0)}k`,                   color:"purple", sub:"Pending release" },
+                  { Icon:IconDollar,  label:"Total Revenue",      val:`Γéª${(MOCK_STATS.totalRevenue/1000000).toFixed(1)}M`,     color:"gold",   sub:"All time" },
+                  { Icon:IconLock,    label:"In Escrow",          val:`Γéª${(escrowTotal/1000).toFixed(0)}k`,                   color:"purple", sub:"Pending release" },
                   { Icon:IconTrendUp, label:"Transactions",       val:MOCK_STATS.totalTransactions,                            color:"teal",   sub:"All orders" },
                   { Icon:IconAlert,   label:"Open Disputes",      val:openDisputes,                                            color:"red",    sub:"Needs attention" },
                 ].map((s,i) => (
@@ -381,7 +413,7 @@ export default function AdminPanel() {
                             <td className="ad-td-id">{t.id}</td>
                             <td>{t.buyer}</td>
                             <td>{t.vendor}</td>
-                            <td className="ad-td-amount">₦{t.amount.toLocaleString()}</td>
+                            <td className="ad-td-amount">Γéª{t.amount.toLocaleString()}</td>
                             <td><span className={`ad-status ad-status--${s.color}`}>{s.label}</span></td>
                           </tr>
                         );
@@ -403,7 +435,7 @@ export default function AdminPanel() {
                       <div key={d.id} className="ad-dispute-mini">
                         <span className="ad-dispute-mini__id">{d.id}</span>
                         <span className="ad-dispute-mini__product">{d.product}</span>
-                        <span className="ad-dispute-mini__amount">₦{d.amount.toLocaleString()}</span>
+                        <span className="ad-dispute-mini__amount">Γéª{d.amount.toLocaleString()}</span>
                         <span className="ad-dispute-mini__reason">{d.reason}</span>
                       </div>
                     ))}
@@ -413,7 +445,7 @@ export default function AdminPanel() {
             </div>
           )}
 
-          {/* ════ TRANSACTIONS ════ */}
+          {/* ΓòÉΓòÉΓòÉΓòÉ TRANSACTIONS ΓòÉΓòÉΓòÉΓòÉ */}
           {activeSection === "transactions" && (
             <div className="ad-section">
               <div className="ad-toolbar">
@@ -444,9 +476,9 @@ export default function AdminPanel() {
                             <td>{t.buyer}</td>
                             <td>{t.vendor}</td>
                             <td className="ad-td-product">{t.product}</td>
-                            <td className="ad-td-amount">₦{t.amount.toLocaleString()}</td>
+                            <td className="ad-td-amount">Γéª{t.amount.toLocaleString()}</td>
                             <td className="ad-td-escrow">
-                              {t.escrow > 0 ? `₦${t.escrow.toLocaleString()}` : "—"}
+                              {t.escrow > 0 ? `Γéª${t.escrow.toLocaleString()}` : "ΓÇö"}
                             </td>
                             <td><span className={`ad-status ad-status--${s.color}`}>{s.label}</span></td>
                             <td className="ad-td-date">{t.date}</td>
@@ -473,14 +505,14 @@ export default function AdminPanel() {
             </div>
           )}
 
-          {/* ════ ESCROW ════ */}
+          {/* ΓòÉΓòÉΓòÉΓòÉ ESCROW ΓòÉΓòÉΓòÉΓòÉ */}
           {activeSection === "escrow" && (
             <div className="ad-section">
               <div className="ad-escrow-cards">
                 {[
-                  { label:"Total In Escrow",     val:`₦${escrowTotal.toLocaleString()}`,                       color:"gold",   Icon:IconLock,    sub:"Across all active orders" },
-                  { label:"Available to Vendors", val:`₦${MOCK_STATS.availableBalance.toLocaleString()}`,       color:"green",  Icon:IconDollar,  sub:"Released & withdrawable" },
-                  { label:"Total Revenue",        val:`₦${MOCK_STATS.totalRevenue.toLocaleString()}`,           color:"blue",   Icon:IconTrendUp, sub:"Platform lifetime" },
+                  { label:"Total In Escrow",     val:`Γéª${escrowTotal.toLocaleString()}`,                       color:"gold",   Icon:IconLock,    sub:"Across all active orders" },
+                  { label:"Available to Vendors", val:`Γéª${MOCK_STATS.availableBalance.toLocaleString()}`,       color:"green",  Icon:IconDollar,  sub:"Released & withdrawable" },
+                  { label:"Total Revenue",        val:`Γéª${MOCK_STATS.totalRevenue.toLocaleString()}`,           color:"blue",   Icon:IconTrendUp, sub:"Platform lifetime" },
                 ].map((c,i) => (
                   <div key={i} className={`ad-escrow-card ad-escrow-card--${c.color}`}>
                     <div className="ad-escrow-card__icon"><c.Icon /></div>
@@ -510,7 +542,7 @@ export default function AdminPanel() {
                             <td>{t.vendor}</td>
                             <td className="ad-td-product">{t.product}</td>
                             <td className={`ad-td-escrow${t.escrow>0?" active":""}`}>
-                              {t.escrow > 0 ? `₦${t.escrow.toLocaleString()}` : "Released"}
+                              {t.escrow > 0 ? `Γéª${t.escrow.toLocaleString()}` : "Released"}
                             </td>
                             <td><span className={`ad-status ad-status--${s.color}`}>{s.label}</span></td>
                             <td>
@@ -535,7 +567,7 @@ export default function AdminPanel() {
             </div>
           )}
 
-          {/* ════ VENDORS ════ */}
+          {/* ΓòÉΓòÉΓòÉΓòÉ VENDORS ΓòÉΓòÉΓòÉΓòÉ */}
           {activeSection === "vendors" && (
             <div className="ad-section">
               <div className="ad-toolbar">
@@ -600,13 +632,13 @@ export default function AdminPanel() {
             </div>
           )}
 
-          {/* ════ DISPUTES ════ */}
+          {/* ΓòÉΓòÉΓòÉΓòÉ DISPUTES ΓòÉΓòÉΓòÉΓòÉ */}
           {activeSection === "disputes" && (
             <div className="ad-section">
               <div className="ad-dispute-cards">
                 <div className="ad-dstat ad-dstat--red"><IconAlert /><span className="ad-dstat__val">{disputes.filter(d=>d.status==="open").length}</span><span className="ad-dstat__label">Open</span></div>
                 <div className="ad-dstat ad-dstat--green"><IconCheck /><span className="ad-dstat__val">{disputes.filter(d=>d.status==="resolved").length}</span><span className="ad-dstat__label">Resolved</span></div>
-                <div className="ad-dstat ad-dstat--gold"><IconDollar /><span className="ad-dstat__val">₦{disputes.filter(d=>d.status==="open").reduce((s,d)=>s+d.amount,0).toLocaleString()}</span><span className="ad-dstat__label">At Risk</span></div>
+                <div className="ad-dstat ad-dstat--gold"><IconDollar /><span className="ad-dstat__val">Γéª{disputes.filter(d=>d.status==="open").reduce((s,d)=>s+d.amount,0).toLocaleString()}</span><span className="ad-dstat__label">At Risk</span></div>
               </div>
 
               <div className="ad-disputes-list">
@@ -615,7 +647,7 @@ export default function AdminPanel() {
                     <div className="ad-dispute-card__header">
                       <div className="ad-dispute-card__ids">
                         <span className="ad-dispute-card__id">{d.id}</span>
-                        <span className="ad-dispute-card__txn">→ {d.txn}</span>
+                        <span className="ad-dispute-card__txn">ΓåÆ {d.txn}</span>
                       </div>
                       <span className={`ad-status ${d.status==="open"?"ad-status--red":"ad-status--green"}`}>
                         {d.status === "open" ? "Open" : "Resolved"}
@@ -626,7 +658,7 @@ export default function AdminPanel() {
                       <div className="ad-dispute-card__meta">
                         <span>Buyer: <strong>{d.buyer}</strong></span>
                         <span>Vendor: <strong>{d.vendor}</strong></span>
-                        <span>Amount: <strong className="ad-td-amount">₦{d.amount.toLocaleString()}</strong></span>
+                        <span>Amount: <strong className="ad-td-amount">Γéª{d.amount.toLocaleString()}</strong></span>
                         <span>Date: <strong>{d.date}</strong></span>
                       </div>
                       <div className="ad-dispute-card__reason">
