@@ -142,7 +142,6 @@ class ChatService {
               )
               .join("\n")
           : "No matching products found.";
-      console.log("Product context prepared.");
     }
 
     // Build system message
@@ -189,8 +188,6 @@ class ChatService {
         ? new HumanMessage(msg.content)
         : new AIMessage(msg.content),
     );
-    console.log('\n\n\n   ', systemMessage, '\n\n\n');
-    
 
     const userHuman = new HumanMessage(userMessage);
     const llmMessages = [systemMessage, ...priorMessages, userHuman];

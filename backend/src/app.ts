@@ -10,7 +10,7 @@ import orderRoutes from './routes/order';
 import paymentRoutes from './routes/payment';
 import adminRoutes from './routes/admin';
 import whatsappRoutes from './integrations/whatsapp/routes/whatsapp.routes';
-import rawWebhookRoutes from './routes/rawWebhook';
+import webhookRoutes from './routes/webhook';
 
 
 const app = express();
@@ -24,12 +24,12 @@ app.use(cors({
 app.use(express.json());
 
 // API Routes
+app.use('/webhook', webhookRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/vendors', vendorRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/orders', orderRoutes);
-app.use('/api/payments', rawWebhookRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/whatsapp', whatsappRoutes);
