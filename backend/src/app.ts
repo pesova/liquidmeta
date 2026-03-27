@@ -13,11 +13,14 @@ import paymentRoutes from './routes/payment';
 connectDB();
 
 const app = express();
-
+const allowedOrigins = env.ALLOWED_ORIGINS;
 app.use(cors({
-  origin: '*',
-  credentials: true
+  origin: allowedOrigins, // or your deployed frontend
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
 }));
+
 app.use(express.json());
 
 // API Routes
