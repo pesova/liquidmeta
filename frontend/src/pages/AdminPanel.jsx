@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { adminAPI } from "../utils/api";
-import { adminAPI } from "../utils/api";
 import "./AdminPanel.css";
 
 /* ── Icons ── */
