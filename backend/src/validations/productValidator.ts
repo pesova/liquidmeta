@@ -6,6 +6,7 @@ const createProductSchema = z.object({
   description: z.string().min(1, 'Description is required'),
   price: z.coerce.number().positive('Price must be greater than 0'),
   category: z.enum(ProductCategoryEnum),
+  quantity: z.coerce.number().min(0, 'Stock must be non-negative').optional(),
   quality: z.coerce.number().optional(),
 });
 

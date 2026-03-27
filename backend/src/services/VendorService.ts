@@ -84,15 +84,20 @@ async onboard(
   }
 
   async getProducts(vendorId: string) {
-    return Product.find({ vendorId });
+    return Product.find({ vendor: vendorId })
+      .select('-embedding')
+      .sort({ createdAt: -1 });
   }
 
   async getOrders(vendorId: string) {
-    return Order.find({ vendorId });
+    return Order.find({ vendor: vendorId })
+      .populate('product', 'name imageUrl price')
+      .populate('buyer', 'name email')
+      .sort({ createdAt: -1 });
   }
 
   async getBalance(vendorId: string) {
-    const orders = await Order.find({ vendorId }).select('_id');
+    const orders = await Order.find({ vendor: vendorId }).select('_id');
     const orderIds = orders.map((o) => o._id);
     const agg = await EscrowTransaction.aggregate([
       { $match: { orderId: { $in: orderIds } } },

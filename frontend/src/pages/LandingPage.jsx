@@ -265,7 +265,10 @@ const S = {
     left: 0,
     width: "100%",
     height: "100%",
-    backgroundImage: `url(${Marketlink})`,
+    backgroundImage: `
+      linear-gradient(rgba(255, 255, 255, 0.65), rgba(255, 255, 255, 0.65)),
+      url(${Marketlink})
+    `,
     backgroundSize: "cover",
     backgroundPosition: "center",
     opacity: 0.4,
