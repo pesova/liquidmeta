@@ -1,8 +1,9 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import "./ChatPage.css";
 import ProductDetailModal from "./ProductDetailModal";
 import { sendChatMessage, getHistory } from "../services/chatService";
+import { AuthContext } from "../context/AuthContext";
 
 /* ── Icons ── */
 const IconSend     = () => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>);
@@ -120,6 +121,7 @@ const buildMessagesFromHistory = (historyItems) => {
 
 export default function ChatPage() {
   const navigate = useNavigate();
+  const { logout } = useContext(AuthContext);
   const [messages, setMessages]     = useState([]);
   const [isTyping, setIsTyping]     = useState(false);
   const [error, setError]           = useState("");
@@ -239,6 +241,14 @@ export default function ChatPage() {
     setTimeout(() => setToastMsg(""), 2500);
   };
 
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } finally {
+      navigate("/", { replace: true });
+    }
+  };
+
   const isFirstLoad = messages.length <= 1;
 
   return (
@@ -252,6 +262,9 @@ export default function ChatPage() {
           <span className="cp-logo-name">MarketLink</span>
         </button>
         <div className="cp-topbar__right">
+          <button className="cp-logout-btn" onClick={handleLogout}>
+            Logout
+          </button>
           <button className="cp-cart-btn" onClick={() => navigate("/checkout")}>
             <IconCart />
             {cartCount > 0 && <span className="cp-cart-badge">{cartCount}</span>}

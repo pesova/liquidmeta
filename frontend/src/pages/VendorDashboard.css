@@ -57,6 +57,18 @@ button { font-family: var(--font-body); cursor: pointer; }
 .vd-topbar__sep { width: 1px; height: 18px; background: rgba(255,255,255,.15); margin: 0 14px; flex-shrink: 0; }
 .vd-topbar__title { font-size: 0.82rem; font-weight: 500; color: rgba(255,255,255,.55); white-space: nowrap; }
 .vd-topbar__right { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+.vd-logout-btn {
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(255,255,255,.08);
+  color: var(--white);
+  font-size: 0.78rem;
+  font-weight: 600;
+  transition: all var(--t);
+}
+.vd-logout-btn:hover { background: rgba(255,255,255,.16); }
 
 /* Notification */
 .vd-notif-wrap { position: relative; }

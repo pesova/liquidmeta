@@ -1,6 +1,7 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import "./VendorDashboard.css";
+import { AuthContext } from "../context/AuthContext";
 
 /* ── Icons ── */
 const IconHome      = () => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>);
@@ -191,6 +192,7 @@ const AddProductModal = ({ onClose, onSave, editProduct }) => {
 /* ── Main Dashboard ── */
 export default function VendorDashboard() {
   const navigate = useNavigate();
+  const { logout } = useContext(AuthContext);
   const [products, setProducts]         = useState(MOCK_PRODUCTS);
   const [orders, setOrders]             = useState(MOCK_ORDERS);
   const [notifications, setNotifications] = useState(MOCK_NOTIFICATIONS);
@@ -205,6 +207,13 @@ export default function VendorDashboard() {
   const unreadCount = notifications.filter(n => !n.read).length;
 
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(""), 3000); };
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } finally {
+      navigate("/", { replace: true });
+    }
+  };
 
   /* Stats */
   const escrowTotal    = orders.filter(o => o.status === "PAID_IN_ESCROW").reduce((s,o) => s + o.amount, 0);
@@ -265,6 +274,9 @@ export default function VendorDashboard() {
           <span className="vd-topbar__title">Vendor Dashboard</span>
         </div>
         <div className="vd-topbar__right">
+          <button className="vd-logout-btn" onClick={handleLogout}>
+            Logout
+          </button>
           {/* Notification bell */}
           <div className="vd-notif-wrap">
             <button className="vd-icon-btn" onClick={() => setShowNotifs(s => !s)}>

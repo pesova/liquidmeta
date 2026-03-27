@@ -1,10 +1,11 @@
 // src/routes/AppRoutes.jsx
-import React, { Suspense, lazy } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import React, { Suspense, lazy, useContext } from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ProtectedRoute } from '../components/ProtectedRoute';
 import { RoleBasedRoute } from '../components/RoleBasedRoute';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import LandingPage from '../pages/LandingPage'
+import { AuthContext } from '../context/AuthContext';
 
 
 // Lazy load pages for code splitting
@@ -17,12 +18,23 @@ const VendorDashboard = lazy(() => import('../pages/VendorDashboard.jsx'));
 const VendorProfile = lazy(() => import('../pages/VendorProfile.jsx'));
 const AdminPanel = lazy(() => import('../pages/Adminpanel.jsx'));
 
+const RootRoute = () => {
+  const { user, loading } = useContext(AuthContext);
+  if (loading) return <LoadingSpinner />;
+
+  if (user) {
+    return <Navigate to={user.role === "vendor" ? "/vendor/dashboard" : "/chat"} replace />;
+  }
+
+  return <LandingPage />;
+};
+
 export const AppRoutes = () => (
   <BrowserRouter>
     <Suspense fallback={<LoadingSpinner />}>
       <Routes>
         {/* Public routes */}
-        <Route path="/" element={<LandingPage />}></Route>
+        <Route path="/" element={<RootRoute />}></Route>
 
         {/* Protected routes (any authenticated user) */}
         <Route element={<ProtectedRoute />}>

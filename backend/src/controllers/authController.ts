@@ -11,6 +11,7 @@ import {
 } from "../validations/authValidator";
 import env from "../config/env";
 import { handleValidation } from "../middleware/validate";
+import { Vendor } from "../models";
 
 export const register = async (req: Request, res: Response) => {
   try {
@@ -83,7 +84,17 @@ export const getProfile = async (req: Request, res: Response) => {
         .json({ success: false, message: "Authentication required" });
     }
 
-    res.json({ success: true, message: "User profile", data: { user } });
+    // Fetch vendor linked to user
+    const vendor = await Vendor.findOne({ user: user.id }).lean();
+
+    res.json({
+      success: true,
+      message: "User profile",
+      data: {
+        user,
+        vendorId: vendor?._id || null,
+      },
+    });
   } catch (error: any) {
     throw error;
   }

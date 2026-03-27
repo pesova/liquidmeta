@@ -342,7 +342,16 @@ const RoleSelector = ({ value, onChange }) => (
 );
 
 /* ── Feedback screen ── */
-const FeedbackScreen = ({ type, title, name, message, role, onContinue }) => (
+const FeedbackScreen = ({
+  type,
+  title,
+  name,
+  message,
+  validationErrors,
+  role,
+  ctaLabel,
+  onContinue,
+}) => (
   <div className={`am-feedback am-feedback--${type}`}>
     {type === "success" && (
       <div className="am-feedback__particles">
@@ -370,12 +379,27 @@ const FeedbackScreen = ({ type, title, name, message, role, onContinue }) => (
     <h2 className="am-feedback__title">{title}</h2>
     {name && <p className="am-feedback__name">{name}</p>}
     <p className="am-feedback__msg">{message}</p>
+    {Array.isArray(validationErrors) && validationErrors.length > 0 && (
+      <ul
+        style={{
+          marginTop: "8px",
+          marginBottom: "6px",
+          paddingLeft: "18px",
+          textAlign: "left",
+        }}
+      >
+        {validationErrors.map((item, idx) => (
+          <li key={`${item.field || "error"}-${idx}`} style={{ marginBottom: "4px" }}>
+            {item.field ? `${item.field}: ` : ""}
+            {item.message || "Invalid value"}
+          </li>
+        ))}
+      </ul>
+    )}
     <button className="am-feedback__btn" onClick={onContinue}>
       {type === "success" ? (
         <>
-          <span>
-            {role === "vendor" ? "Go to Dashboard" : "Start Shopping"}
-          </span>
+          <span>{ctaLabel || (role === "vendor" ? "Go to Dashboard" : "Start Shopping")}</span>
           <IconArrowRight />
         </>
       ) : (
@@ -395,6 +419,10 @@ export default function AuthModal({ isOpen, onClose, defaultTab = "login" }) {
   const [forgotPw, setForgotPw] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
   const [forgotSent, setForgotSent] = useState(false);
+  const [showVerifyEmail, setShowVerifyEmail] = useState(false);
+  const [verificationToken, setVerificationToken] = useState("");
+  const [verificationMeta, setVerificationMeta] = useState(null);
+  const [verificationNotice, setVerificationNotice] = useState("");
 
   const [form, setForm] = useState({
     fullName: "",
@@ -411,6 +439,8 @@ export default function AuthModal({ isOpen, onClose, defaultTab = "login" }) {
     idDocument: null,
   });
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+  const getValidationErrors = (err) =>
+    Array.isArray(err?.response?.data?.errors) ? err.response.data.errors : [];
 
   useEffect(() => {
     setFeedback(null);
@@ -418,6 +448,10 @@ export default function AuthModal({ isOpen, onClose, defaultTab = "login" }) {
     setForgotPw(false);
     setForgotSent(false);
     setForgotEmail("");
+    setShowVerifyEmail(false);
+    setVerificationToken("");
+    setVerificationMeta(null);
+    setVerificationNotice("");
     setForm((f) => ({
       ...f,
       fullName: "",
@@ -482,19 +516,21 @@ export default function AuthModal({ isOpen, onClose, defaultTab = "login" }) {
         confirmPassword: form.confirmPassword || form.password,
         phoneNumber: form.phoneNumber,
       });
-      setFeedback({
-        type: "success",
-        title: "Account Created!",
-        name: form.fullName,
+      setVerificationMeta({
+        email: form.email,
         role: "buyer",
-        message:
-          "Check your email to verify your account, then start shopping!",
+        name: form.fullName,
       });
+      setVerificationToken("");
+      setVerificationNotice("");
+      setShowVerifyEmail(true);
     } catch (err) {
+      const validationErrors = getValidationErrors(err);
       setFeedback({
         type: "error",
         title: "Registration Failed",
         message: err?.response?.data?.message || err.message || "Something went wrong.",
+        validationErrors,
       });
     } finally {
       setLoading(false);
@@ -516,19 +552,21 @@ export default function AuthModal({ isOpen, onClose, defaultTab = "login" }) {
         nin: form.cacNumber,
         phoneNumber: form.phoneNumber,
       });
-      setFeedback({
-        type: "success",
-        title: "Vendor Account Created!",
-        name: form.businessName,
+      setVerificationMeta({
+        email: form.email,
         role: "vendor",
-        message:
-          "Check your email to verify your account. We'll review your details shortly.",
+        name: form.businessName,
       });
+      setVerificationToken("");
+      setVerificationNotice("");
+      setShowVerifyEmail(true);
     } catch (err) {
+      const validationErrors = getValidationErrors(err);
       setFeedback({
         type: "error",
         title: "Registration Failed",
         message: err?.response?.data?.message || err.message || "Something went wrong.",
+        validationErrors,
       });
     } finally {
       setLoading(false);
@@ -549,8 +587,65 @@ export default function AuthModal({ isOpen, onClose, defaultTab = "login" }) {
     }
   };
 
+  const handleVerifyEmail = async (e) => {
+    e.preventDefault();
+    if (!verificationMeta?.email) return;
+
+    setLoading(true);
+    try {
+      const verifiedUser = await auth.verifyEmail(
+        verificationMeta.email,
+        verificationToken
+      );
+      setShowVerifyEmail(false);
+      setFeedback({
+        type: "success",
+        title: "Email Verified!",
+        name: verificationMeta.name,
+        role: verificationMeta.role,
+        ctaLabel: "Proceed to Login",
+        action: "go-login",
+        message:
+          "Your email is verified successfully. Please log in to continue.",
+      });
+    } catch (err) {
+      setFeedback({
+        type: "error",
+        title: "Verification Failed",
+        message:
+          err?.response?.data?.message ||
+          err.message ||
+          "Invalid or expired verification token.",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendVerification = async () => {
+    if (!verificationMeta?.email) return;
+    setLoading(true);
+    try {
+      await auth.resendVerification(verificationMeta.email);
+      setVerificationNotice(
+        `A new verification token was sent to ${verificationMeta.email}.`
+      );
+    } catch (err) {
+      setVerificationNotice(
+        err?.response?.data?.message || err.message || "Could not resend token. Please try again."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleFeedbackContinue = () => {
     if (feedback.type === "success") {
+      if (feedback.action === "go-login") {
+        setFeedback(null);
+        setTab("login");
+        return;
+      }
       onClose();
       navigate(feedback.role === "vendor" ? "/vendor/dashboard" : "/chat");
     } else setFeedback(null);
@@ -576,7 +671,62 @@ export default function AuthModal({ isOpen, onClose, defaultTab = "login" }) {
         </div>
 
         {/* ── FORGOT PASSWORD ── */}
-        {forgotPw ? (
+        {showVerifyEmail ? (
+          <div className="am-body">
+            <button
+              className="am-back"
+              onClick={() => {
+                setShowVerifyEmail(false);
+                setTab("signup");
+              }}
+            >
+              <IconArrowLeft /> Back
+            </button>
+            <h2 className="am-title">Verify Your Email</h2>
+            <p className="am-sub">
+              Enter the verification token sent to{" "}
+              <strong>{verificationMeta?.email}</strong>
+            </p>
+            <form onSubmit={handleVerifyEmail} className="am-form">
+              <Field
+                icon={IconMail}
+                label="Verification Token"
+                name="verificationToken"
+                placeholder="e.g. 123456"
+                value={verificationToken}
+                onChange={(_, v) => setVerificationToken(v)}
+                required
+              />
+              <button
+                type="submit"
+                className="am-btn am-btn--primary"
+                disabled={loading}
+              >
+                {loading ? (
+                  <>
+                    <IconLoader />
+                    Verifying...
+                  </>
+                ) : (
+                  "Verify Email"
+                )}
+              </button>
+              <button
+                type="button"
+                className="am-btn"
+                onClick={handleResendVerification}
+                disabled={loading}
+              >
+                Resend Token
+              </button>
+              {verificationNotice && (
+                <p className="am-sub" style={{ marginTop: "8px" }}>
+                  {verificationNotice}
+                </p>
+              )}
+            </form>
+          </div>
+        ) : forgotPw ? (
           <div className="am-body">
             <button className="am-back" onClick={() => setForgotPw(false)}>
               <IconArrowLeft /> Back

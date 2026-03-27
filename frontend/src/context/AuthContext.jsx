@@ -29,21 +29,33 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const login = useCallback(async (email, password) => {
-    const loggedInUser = await authService.login(email, password);
+    await authService.login(email, password);
+    // Profile includes vendorId for vendors; login payload may omit it
+    const loggedInUser = await authService.fetchCurrentUser();
     setUser(loggedInUser);
     return loggedInUser;
   }, []);
 
   const register = useCallback(async (data) => {
     const newUser = await authService.register(data);
-    setUser(newUser);
+    // No auth session until email verified + login (see AuthModal flow)
     return newUser;
   }, []);
 
   const onboardVendor = useCallback(async (data) => {
     const vendorUser = await authService.onboardVendor(data);
-    setUser(vendorUser);
+    // Same as buyer: verify email from modal, then login
     return vendorUser;
+  }, []);
+
+  const verifyEmail = useCallback(async (email, token) => {
+    const verifiedUser = await authService.verifyEmail(email, token);
+    // No session until explicit login (AuthModal proceeds to login tab)
+    return verifiedUser;
+  }, []);
+
+  const resendVerification = useCallback(async (email) => {
+    return authService.resendVerification(email);
   }, []);
 
   const logout = useCallback(async () => {
@@ -52,7 +64,7 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, onboardVendor, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, register, onboardVendor, verifyEmail, resendVerification, logout }}>
       {children}
     </AuthContext.Provider>
   );
